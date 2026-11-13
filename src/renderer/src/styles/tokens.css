@@ -1,0 +1,65 @@
+:root {
+  /* Paleta del shot de referencia */
+  --ink: #010101;
+  --graphite: #3f3d40;
+  --smoke: #7e7682;
+  --mist: #b6b5c9;
+  --paper: #f4f4f6;
+  --lime: #d8f33a;
+  --lime-ink: #0a0d05;
+
+  --ok: #8be38b;
+  --warn: #f2c14e;
+  --danger: #ff6b5e;
+
+  /* Espaciado: múltiplos de 8 (4 para micro-espacios) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 16px;
+  --s-4: 24px;
+  --s-5: 32px;
+  --s-6: 48px;
+  --s-7: 64px;
+
+  --r-xl: 24px;
+  --r-lg: 20px;
+  --r-md: 12px;
+  --r-pill: 999px;
+
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --titlebar-h: 56px;
+
+  --font-ui: 'Inter Tight Variable', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-accent: 'Instrument Serif', Georgia, serif;
+}
+
+/* Tema por pantalla: oscuro inmersivo o claro editorial. */
+[data-theme='oscuro'] {
+  --bg: var(--ink);
+  --surface-1: #0e0e0f;
+  --surface-2: #161517;
+  --text: var(--paper);
+  --text-2: #a39ca7; /* 7.6:1 sobre --ink */
+  --text-3: var(--smoke);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.16);
+  --glass: rgba(22, 21, 23, 0.55);
+  --nav-bg: rgba(22, 21, 23, 0.72);
+  --nav-active-bg: var(--paper);
+  --nav-active-text: var(--ink);
+}
+
+[data-theme='claro'] {
+  --bg: var(--paper);
+  --surface-1: #ffffff;
+  --surface-2: #eaeaee;
+  --text: var(--ink);
+  --text-2: #55525a; /* 7.3:1 sobre --paper */
+  --text-3: #6f6a74;
+  --hairline: rgba(1, 1, 1, 0.08);
+  --hairline-strong: rgba(1, 1, 1, 0.16);
+  --glass: rgba(255, 255, 255, 0.6);
+  --nav-bg: rgba(255, 255, 255, 0.72);
+  --nav-active-bg: var(--ink);
+  --nav-active-text: var(--paper);
+}
