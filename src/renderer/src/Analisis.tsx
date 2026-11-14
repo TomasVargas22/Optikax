@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react'
-import {
-  recommendedTweaks,
-  type AiAnalysis,
-  type AiProgress,
-  type ManualCategory,
-  type TweakInfo
-} from '@shared/types'
+import { recommendedTweaks, type AiAnalysis, type AiProgress, type ManualCategory, type TweakInfo } from '@shared/types'
 import { errorMessage } from './errors'
 
 const CATEGORY: Record<ManualCategory, string> = {
@@ -19,10 +13,77 @@ const CATEGORY: Record<ManualCategory, string> = {
 
 const PERFIL = { entrada: 'Gama de entrada', media: 'Gama media', alta: 'Gama alta', entusiasta: 'Entusiasta' } as const
 
-const dateText = (iso: string): string =>
-  new Date(iso).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })
+const dateText = (iso: string): string => new Date(iso).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })
+const pad = (n: number): string => String(n).padStart(2, '0')
 
-/** Pantalla Análisis IA: funcional; el carrusel y la animación de escaneo llegan en la fase de interfaz. */
+interface Slide {
+  key: string
+  tag: string
+  impacto: string | null
+  titulo: string
+  texto: string
+}
+
+/** Carrusel horizontal de recomendaciones: línea de progreso, contador y flechas en pastilla. */
+function Carousel({ slides }: { slides: Slide[] }) {
+  const [index, setIndex] = useState(0)
+  const last = slides.length - 1
+  const go = (i: number): void => setIndex(Math.max(0, Math.min(last, i)))
+
+  return (
+    <div
+      className="carousel"
+      role="region"
+      aria-roledescription="carrusel"
+      aria-label="Recomendaciones"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') go(index + 1)
+        if (e.key === 'ArrowLeft') go(index - 1)
+      }}
+    >
+      <div className="carousel-viewport">
+        <ol className="carousel-track" style={{ transform: `translateX(calc(${-index} * (var(--slide-w) + var(--s-3))))` }}>
+          {slides.map((s, i) => (
+            <li
+              key={s.key}
+              className="slide"
+              aria-hidden={i !== index}
+              aria-label={`${i + 1} de ${slides.length}`}
+              data-current={i === index || undefined}
+              onClick={() => go(i)}
+            >
+              <span className="slide-num num">{pad(i + 1)}</span>
+              <span className="product-tags">
+                <span>{s.tag}</span>
+                {s.impacto && <span data-tag="riesgo">Impacto {s.impacto}</span>}
+              </span>
+              <h3>{s.titulo}</h3>
+              <p>{s.texto}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="carousel-controls">
+        <div className="carousel-progress" aria-hidden="true">
+          <span style={{ transform: `scaleX(${(index + 1) / slides.length})` }} />
+        </div>
+        <p className="carousel-count num" aria-live="polite">
+          {pad(index + 1)}/{pad(slides.length)}
+        </p>
+        <div className="carousel-arrows">
+          <button type="button" className="pill" aria-label="Anterior" disabled={index === 0} onClick={() => go(index - 1)}>
+            ←
+          </button>
+          <button type="button" className="pill" aria-label="Siguiente" disabled={index === last} onClick={() => go(index + 1)}>
+            →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [hasKey, setHasKey] = useState<boolean | null>(null)
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null)
@@ -79,13 +140,28 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
   const phase = [...feed].reverse().find((p): p is Extract<AiProgress, { kind: 'fase' }> => p.kind === 'fase')
   const sourcesFound = feed.filter((p) => p.kind === 'fuente').length
 
+  const rec = analysis?.recomendacion
+  const slides: Slide[] = rec
+    ? [
+        ...rec.ajustes
+          .filter((a) => a.aplicar)
+          .map((a) => ({ key: a.id, tag: 'Ajuste automático', impacto: null, titulo: titulo(a.id), texto: a.motivo })),
+        ...rec.manuales.map((m) => ({
+          key: `m-${m.titulo}`,
+          tag: CATEGORY[m.categoria],
+          impacto: m.impacto,
+          titulo: m.titulo,
+          texto: m.detalle
+        }))
+      ]
+    : []
+  const notRecommended = rec?.ajustes.filter((a) => !a.aplicar) ?? []
+
   return (
     <>
       <section className="block">
         <div className="block-head">
-          <p className="eyebrow">
-            {analysis ? `Último análisis · ${dateText(analysis.createdAt)}` : 'Sin análisis todavía'}
-          </p>
+          <p className="eyebrow">{analysis ? `Último análisis · ${dateText(analysis.createdAt)}` : 'Sin análisis todavía'}</p>
           <div className="toolbar">
             {running ? (
               <button type="button" className="pill" onClick={() => void window.optikax.ai.cancel()}>
@@ -98,9 +174,7 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
             )}
           </div>
         </div>
-        <p className="lede">
-          Usa Claude con búsqueda web. Coste estimado: ≈ $0.10–0.40 por análisis, que se cobra en tu cuenta de Anthropic.
-        </p>
+        <p className="lede">Usa Claude con búsqueda web. Coste estimado: ≈ $0.10–0.40 por análisis, en tu cuenta de Anthropic.</p>
 
         <div aria-live="polite">
           {hasKey === false && (
@@ -113,72 +187,67 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
           )}
           {error && <p className="notice" data-kind="error">{error}</p>}
           {applied && <p className="notice" data-kind="ok">{applied}</p>}
-          {running && (
-            <div className="notice">
-              <p>
-                <b>{phase?.text ?? 'Preparando…'}</b> {sourcesFound > 0 && `${sourcesFound} fuentes encontradas.`}
-              </p>
-              {searches.map((s) => (
-                <p key={s.query}>Buscando: {s.query}</p>
-              ))}
-            </div>
-          )}
         </div>
+
+        {running && (
+          <div className="scan">
+            <div className="radar" aria-hidden="true">
+              <span />
+            </div>
+            <div className="scan-feed" aria-live="polite">
+              <p>
+                <b>{phase?.text ?? 'Preparando…'}</b>
+              </p>
+              <p className="num">
+                {searches.length} búsquedas · {sourcesFound} fuentes
+              </p>
+              <ol>
+                {searches.slice(-6).map((s) => (
+                  <li key={s.query}>Buscando: {s.query}</li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
       </section>
 
-      {analysis && !running && (
+      {analysis && rec && !running && (
         <>
           <section className="block">
             <p className="eyebrow">
-              {PERFIL[analysis.recomendacion.perfil]} · coste ≈ ${analysis.costoUSD.toFixed(2)} · {analysis.busquedas.length}{' '}
-              búsquedas
+              {PERFIL[rec.perfil]} · coste ≈ ${analysis.costoUSD.toFixed(2)} · {analysis.busquedas.length} búsquedas
             </p>
-            <p className="lede">{analysis.recomendacion.resumen}</p>
-            {analysis.recomendacion.advertencias.map((a) => (
+            <p className="lede">{rec.resumen}</p>
+            {rec.advertencias.map((a) => (
               <p key={a} className="notice" data-kind="error">
                 {a}
               </p>
             ))}
           </section>
 
-          <section className="block">
-            <div className="block-head">
-              <p className="eyebrow">Ajustes del catálogo</p>
-              <div className="toolbar">
+          {slides.length > 0 && (
+            <section className="block">
+              <div className="block-head">
+                <p className="eyebrow">Lo que recomienda para tu equipo</p>
                 <button type="button" className="btn-primary" disabled={toApply.length === 0} onClick={applyRecommended}>
                   {toApply.length === 0 ? 'Nada pendiente' : `Aplicar ${toApply.length} recomendado${toApply.length === 1 ? '' : 's'}`}
                 </button>
               </div>
-            </div>
-            <ul className="tweaks">
-              {analysis.recomendacion.ajustes.map((a) => (
-                <li key={a.id} className="tweak" data-selected={a.aplicar || undefined}>
-                  <span className="tweak-tags">
-                    <span data-tag={a.aplicar ? 'riesgo' : undefined}>{a.aplicar ? 'Recomendado' : 'No recomendado'}</span>
-                  </span>
-                  <h3>{titulo(a.id)}</h3>
-                  <p>{a.motivo}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
+              <Carousel slides={slides} />
+            </section>
+          )}
 
-          {analysis.recomendacion.manuales.length > 0 && (
-            <section className="block">
-              <p className="eyebrow">Para hacer a mano</p>
-              <ul className="tweaks">
-                {analysis.recomendacion.manuales.map((m) => (
-                  <li key={m.titulo} className="tweak">
-                    <span className="tweak-tags">
-                      <span>{CATEGORY[m.categoria]}</span>
-                      <span>Impacto {m.impacto}</span>
-                    </span>
-                    <h3>{m.titulo}</h3>
-                    <p>{m.detalle}</p>
+          {notRecommended.length > 0 && (
+            <details className="block disclosure">
+              <summary className="eyebrow">No recomendados para tu equipo ({notRecommended.length})</summary>
+              <ul className="plain-list">
+                {notRecommended.map((a) => (
+                  <li key={a.id}>
+                    <b>{titulo(a.id)}</b> · {a.motivo}
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
           )}
 
           <section className="block">
@@ -189,21 +258,22 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
               </button>
             </div>
             <p className="lede">
-              Limpieza automática {analysis.recomendacion.ram.autoLimpieza ? 'activada' : 'desactivada'}: purgar la standby cuando
-              pase de <span className="num">{analysis.recomendacion.ram.umbralStandbyMB}</span> MB y queden menos de{' '}
-              <span className="num">{analysis.recomendacion.ram.umbralLibreMB}</span> MB libres.
+              Limpieza automática {rec.ram.autoLimpieza ? 'activada' : 'desactivada'}: purgar la standby cuando pase de{' '}
+              <span className="num">{rec.ram.umbralStandbyMB}</span> MB y queden menos de <span className="num">{rec.ram.umbralLibreMB}</span>{' '}
+              MB libres.
             </p>
           </section>
 
           {analysis.fuentes.length > 0 && (
             <section className="block">
-              <p className="eyebrow">Fuentes</p>
+              <p className="eyebrow">Fuentes ({analysis.fuentes.length})</p>
               <ul className="sources">
                 {analysis.fuentes.map((f) => (
                   <li key={f.url}>
                     <a href={f.url} target="_blank" rel="noreferrer">
                       {f.title}
                     </a>
+                    <span>{new URL(f.url).hostname.replace(/^www\./, '')}</span>
                   </li>
                 ))}
               </ul>

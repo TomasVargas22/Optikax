@@ -4,6 +4,58 @@ Registro de decisiones tomadas durante el desarrollo y de lo que se descubrió a
 
 ---
 
+## 2026-11-14 · Fase F: interfaz completa y three.js
+
+### Dependencias
+- `three@0.187.0`, `@react-three/fiber@9.8.2` (compatible con React 19.3) y `motion@14.14.0`.
+- **No se instaló `@react-three/drei`:** las escenas son dos `Points` con shaders propios y no usan nada de drei. Sería una dependencia sin uso.
+
+### Pantallas
+- **Loader:** el contador 0→100 sigue el progreso real de `hardware.ps1`, con la línea de estado arriba a la izquierda y la marca `O.` con su destello.
+- **Panel:**
+  - hero `DETECTA /ajusta/ JUEGA` con el núcleo 3D;
+  - chips de hardware y Optikax Score: 60 % salud del hardware (problemas detectados) y 40 % ajustes de riesgo bajo aplicados;
+  - tres pasos de vidrio sobre la ola, problemas detectados y fila de garantías.
+- **Optimizar** (claro editorial):
+  - tarjetas tipo producto con ícono de línea por categoría y badge lima `+`;
+  - toda la tarjeta es seleccionable;
+  - cursor lima "Aplicar / Quitar / Ver" con muelle (`useSpring` de motion);
+  - barra de acción fija abajo.
+- **Análisis IA:** carrusel con línea de progreso, contador `01/06` y flechas en pastilla (también con las teclas ← →), anillo de barrido tipo radar y feed de búsquedas en vivo.
+- **Modo Juego:** interruptor grande y aviso de optimizadores en conflicto.
+- **Ajustes:**
+  - API key;
+  - Efectos 3D (Auto / Siempre / Nunca);
+  - Iniciar con Windows;
+  - accesos a los umbrales de memoria y a los juegos personalizados;
+  - Exportar respaldo.
+
+### 3D y rendimiento
+- `frameloop="demand"`. Mientras la escena está activa, un temporizador pide fotogramas a 30 fps; si no, cero fotogramas.
+- Activa = ventana visible y con foco, sin juego abierto y efectos permitidos.
+- `dpr` de 1 a 1,5, sin antialias ni sombras, una geometría `Points` por escena.
+- Chunk aparte con carga diferida (`Scenes-*.js`).
+- Si WebGL falla, o con "Nunca", o con "Auto" y movimiento reducido, se muestran imágenes de puntos fijas.
+- **Este equipo tiene el movimiento reducido activado** (animaciones de Windows apagadas). Con "Auto" verás las imágenes fijas: es lo que pide el diseño. Para ver el 3D, elige "Siempre".
+- El núcleo crece con el uso de RAM y se dispersa y se vuelve a juntar con cada purga. **No reacciona a la carga de CPU:** la app no mide la CPU todavía.
+- El radar del análisis es CSS, no three.js: es más barato y se detiene con la misma regla que el resto de animaciones.
+
+### Inicio con Windows
+Optikax pide administrador, y Windows no arranca solas las apps elevadas que están en la clave `Run`. Por eso se usa una tarea programada (`schtasks /SC ONLOGON /RL HIGHEST`) que lanza la app con `--hidden`, para que arranque en la bandeja. Solo funciona en la app instalada.
+
+### Verificación (`npm run capture`)
+- Capturas de cada pantalla en `docs/capturas/`, hechas en una carpeta de datos temporal con Efectos 3D en "Siempre" y un análisis de ejemplo.
+- **GPU** (contadores `GPU Engine` de los procesos de Electron, 8 s por medición, tres pasadas):
+  - con el Panel y los dos 3D activos: 0–2,1 %;
+  - minimizada: 0–0,65 %.
+
+  Las mediciones varían y todas están cerca de cero.
+- Fallo encontrado y corregido: con un juego abierto, la regla que pausaba las animaciones dejaba las de entrada congeladas en opacidad 0, y la pantalla salía en negro al navegar. Ahora saltan a su estado final.
+- Durante las capturas, el Modo Juego detectó de verdad *The Farmer Was Replaced*. La prioridad ya era Alta (KRNLGame) y el plan no se tocó.
+- **Sin verificar:** el cursor lima en movimiento y la animación de dispersión al purgar. Son interacciones; las capturas no las recogen.
+
+---
+
 ## 2026-11-14 · Fase E: Modo Juego y bandeja
 
 ### Diseño

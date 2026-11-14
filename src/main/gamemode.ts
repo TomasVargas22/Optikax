@@ -179,7 +179,10 @@ async function tick(): Promise<void> {
   polling = true
   try {
     const procs = await native.listProcesses()
-    conflicts = findConflicts(procs)
+    const found = findConflicts(procs)
+    const changed = found.map((c) => c.name).join() !== conflicts.map((c) => c.name).join()
+    conflicts = found
+    if (changed) emit()
     if (current) {
       if (!procs.some((x) => x.pid === current!.pid)) await endGame()
       return

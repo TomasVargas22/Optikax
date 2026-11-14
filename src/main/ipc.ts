@@ -1,5 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { execFile } from 'node:child_process'
+import { copyFileSync, existsSync } from 'node:fs'
+import { setAutostart } from './autostart'
+import { backup } from './tweaks/backup'
 import {
   IPC,
   type AppInfo,
@@ -45,11 +48,31 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   })
 
   ipcMain.handle(IPC.settingsGet, () => getSettings())
-  ipcMain.handle(IPC.settingsUpdate, (_e, patch: DeepPartial<Settings>) => {
+  ipcMain.handle(IPC.settingsUpdate, async (_e, patch: DeepPartial<Settings>) => {
+    const before = getSettings().iniciarConWindows
     const next = updateSettings(patch)
+    if (next.iniciarConWindows !== before) {
+      try {
+        await setAutostart(next.iniciarConWindows)
+      } catch (err) {
+        updateSettings({ iniciarConWindows: before })
+        throw err
+      }
+    }
     syncAutoClean()
     syncGameMode()
-    return next
+    return getSettings()
+  })
+
+  // Copia de backup.json (los valores originales) donde el usuario elija.
+  ipcMain.handle(IPC.backupExport, async (): Promise<string | null> => {
+    if (!existsSync(backup.path())) throw new Error('Todavía no hay respaldo: Optikax no ha aplicado ningún ajuste.')
+    const win = getWindow()
+    const options = { defaultPath: 'optikax-respaldo.json', filters: [{ name: 'JSON', extensions: ['json'] }] }
+    const r = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+    if (r.canceled || !r.filePath) return null
+    copyFileSync(backup.path(), r.filePath)
+    return r.filePath
   })
 
   ipcMain.handle(IPC.gameModeStatus, () => gameModeStatus())

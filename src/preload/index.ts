@@ -52,6 +52,9 @@ const api: OptikaxApi = {
     clear: () => ipcRenderer.invoke(IPC.apiKeyClear),
     test: () => ipcRenderer.invoke(IPC.apiKeyTest)
   },
+  backup: {
+    export: () => ipcRenderer.invoke(IPC.backupExport)
+  },
   gameMode: {
     status: () => ipcRenderer.invoke(IPC.gameModeStatus),
     onChange: (cb) => {

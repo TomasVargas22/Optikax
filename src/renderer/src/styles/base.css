@@ -362,9 +362,20 @@ input {
 .btn-primary:active {
   transform: scale(0.975);
 }
+/* Lima atenuado se ve oliva y sucio: desactivado pasa a grafito. */
 .btn-primary:disabled {
   cursor: default;
-  opacity: 0.6;
+  background: var(--graphite);
+  color: var(--mist);
+}
+[data-theme='claro'] .btn-primary:disabled {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+/* La barra de acción es oscura también sobre el tema claro. */
+[data-theme] .apply-bar .btn-primary:disabled {
+  background: var(--graphite);
+  color: var(--mist);
 }
 
 .link {
@@ -734,23 +745,6 @@ input {
   font-size: 14px;
   color: var(--text-2);
 }
-.tweak p.tweak-note {
-  font-size: 13px;
-  font-style: italic;
-  color: var(--text);
-}
-.tweak p.tweak-ia {
-  font-size: 13px;
-  color: var(--text);
-}
-.tweak p.tweak-ia b {
-  display: inline-block;
-  padding: 0 var(--s-2);
-  border-radius: var(--r-pill);
-  background: var(--lime);
-  color: var(--lime-ink);
-  font-weight: 600;
-}
 .sources {
   display: grid;
   gap: var(--s-2);
@@ -801,18 +795,29 @@ input {
   opacity: 0.5;
 }
 
-/* Con un juego abierto o la ventana oculta, nada se mueve: cero trabajo de GPU para la interfaz. */
+/*
+ * Con un juego abierto o la ventana oculta, nada se mueve: cero trabajo de GPU para la interfaz.
+ * Las animaciones saltan a su estado final en vez de pausarse: pausadas, las de entrada se quedarían
+ * en su primer fotograma (opacidad 0) y la pantalla aparecería en negro.
+ */
 .shell[data-game] *,
 .shell[data-window='oculta'] * {
-  animation-play-state: paused !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
   transition: none !important;
 }
 
+/* Movimiento reducido: fuera desplazamientos y rotaciones; quedan solo los fundidos. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-property: opacity, background-color, border-color, color !important;
+  }
+  .carousel-track {
+    transition: none !important;
   }
 }

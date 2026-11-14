@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
-import type { AppInfo, GameModeStatus, MemStats, Settings, WindowState } from '@shared/types'
-
-const gb = (bytes: number): string => (bytes / 2 ** 30).toFixed(1)
+import { useCallback, useEffect, useState } from 'react'
+import type { AppInfo, GameModeStatus, HardwareProfile, MemStats, ScanProgress, Settings, WindowState } from '@shared/types'
 import { Ajustes } from './Ajustes'
 import { Analisis } from './Analisis'
+import { EffectsContext, useReducedMotion } from './effects'
 import { errorMessage } from './errors'
-import { HardwareSummary } from './HardwareSummary'
+import { Loader } from './Loader'
 import { Memoria } from './Memoria'
 import { ModoJuego } from './ModoJuego'
 import { Optimizar } from './Optimizar'
 import { PAGES, type PageId } from './pages'
+import { Panel } from './Panel'
 
 export function App() {
   const [pageId, setPageId] = useState<PageId>('panel')
@@ -18,13 +18,29 @@ export function App() {
   const [hasKey, setHasKey] = useState<boolean | null>(null)
   const [windowState, setWindowState] = useState<WindowState>('visible')
   const [mem, setMem] = useState<MemStats | null>(null)
-  const [memError, setMemError] = useState<string | null>(null)
   const [game, setGame] = useState<GameModeStatus | null>(null)
+  const [hw, setHw] = useState<HardwareProfile | null>(null)
+  const [hwError, setHwError] = useState<string | null>(null)
+  const [scan, setScan] = useState<ScanProgress | null>(null)
+  const [scanning, setScanning] = useState(true)
+  const reduced = useReducedMotion()
 
   const page = PAGES.find((p) => p.id === pageId) ?? PAGES[0]
   const mainPages = PAGES.filter((p) => p.id !== 'ajustes')
 
+  // El escaneo de hardware arranca con la app: el loader muestra su progreso real.
+  const runScan = useCallback((force: boolean) => {
+    setScanning(true)
+    setHwError(null)
+    window.optikax.hardware
+      .scan(force)
+      .then(setHw, (e: unknown) => setHwError(errorMessage(e)))
+      .finally(() => setScanning(false))
+  }, [])
+
   useEffect(() => {
+    const offScan = window.optikax.hardware.onProgress(setScan)
+    runScan(false)
     void window.optikax.app.info().then(setInfo)
     void window.optikax.settings.get().then(setSettings)
     void window.optikax.apiKey.has().then(setHasKey)
@@ -32,23 +48,29 @@ export function App() {
     const offGame = window.optikax.gameMode.onChange(setGame)
     const offWindow = window.optikax.app.onWindowState(setWindowState)
     return () => {
+      offScan()
       offGame()
       offWindow()
     }
-  }, [])
+  }, [runScan])
 
-  // Con un juego abierto la app se queda quieta: sin animaciones ni sondeos de la interfaz.
+  // Con un juego abierto la app se queda quieta: sin animaciones, 3D ni sondeos de la interfaz.
   const playing = game?.juego != null
+  const mode = settings?.efectos3d ?? 'auto'
+  const effects = {
+    enabled: mode === 'siempre' || (mode === 'auto' && !reduced),
+    active: windowState === 'visible' && !playing
+  }
 
-  // Lectura de memoria en vivo; se detiene cuando la ventana no se ve.
+  // Memoria en vivo para el núcleo del Panel; se detiene cuando no se ve.
   const watchMemory = pageId === 'panel' && windowState !== 'oculta' && !playing
   useEffect(() => {
     if (!watchMemory) return
     let alive = true
     const read = (): void => {
       window.optikax.memory.stats().then(
-        (m) => alive && (setMem(m), setMemError(null)),
-        (e: unknown) => alive && setMemError(errorMessage(e))
+        (m) => alive && setMem(m),
+        () => {}
       )
     }
     read()
@@ -64,88 +86,73 @@ export function App() {
     void window.optikax.app.setTitleBarTheme(page.theme)
   }, [page.theme])
 
+  const loaded = hw !== null || hwError !== null
+
   return (
-    <div className="shell" data-theme={page.theme} data-window={windowState} data-game={playing || undefined}>
-      <header className="titlebar">
-        <div className="brand">
-          O<i>.</i>
-        </div>
-        <nav className="nav" aria-label="Principal">
-          {mainPages.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              aria-current={p.id === pageId ? 'page' : undefined}
-              onClick={() => setPageId(p.id)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </nav>
-        <div className="titlebar-end">
-          <button
-            type="button"
-            className="pill"
-            aria-current={pageId === 'ajustes' ? 'page' : undefined}
-            onClick={() => setPageId('ajustes')}
-          >
-            Ajustes
-          </button>
-        </div>
-      </header>
-
-      <main className="page" key={page.id}>
-        {page.id === 'memoria' ? (
-          <Memoria visible={windowState !== 'oculta'} />
-        ) : (
-          <>
-            <p className="eyebrow">{page.eyebrow}</p>
-            <h1 className="display">{page.title}</h1>
-            <p className="lede">{page.lede}</p>
-          </>
-        )}
-
-        {page.id === 'panel' && <HardwareSummary />}
-        {page.id === 'optimizar' && <Optimizar />}
-        {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} />}
-        {page.id === 'ajustes' && <Ajustes onKeyChange={setHasKey} />}
-        {page.id === 'juego' && <ModoJuego status={game} />}
-
-        {page.id === 'panel' && (
-          <div className="status">
-            <span className="chip">
-              <span className="dot" data-state={info ? (info.elevado ? 'ok' : 'warn') : undefined} />
-              Permisos <b>{info ? (info.elevado ? 'Administrador' : 'Limitados') : '…'}</b>
-            </span>
-            <span className="chip">
-              <span className="dot" data-state={hasKey ? 'ok' : undefined} />
-              API key <b>{hasKey === null ? '…' : hasKey ? 'Guardada' : 'Sin configurar'}</b>
-            </span>
-            <span className="chip" title={memError ?? undefined}>
-              <span className="dot" data-state={memError ? 'warn' : mem ? 'ok' : undefined} />
-              RAM{' '}
-              {memError ? (
-                <b>Sin lectura</b>
-              ) : mem ? (
-                <>
-                  <b className="num">{gb(mem.totalBytes - mem.availBytes)}</b> en uso ·{' '}
-                  <b className="num">{gb(mem.standbyBytes)}</b> standby ·{' '}
-                  <b className="num">{gb(mem.freeBytes)}</b> libre ·{' '}
-                  <b className="num">{gb(mem.totalBytes)}</b> GB
-                </>
-              ) : (
-                <b>…</b>
-              )}
-            </span>
-            <span className="chip">
-              Efectos 3D <b>{settings?.efectos3d ?? '…'}</b>
-            </span>
-            <span className="chip">
-              Versión <b className="num">{info?.version ?? '…'}</b>
-            </span>
+    <EffectsContext.Provider value={effects}>
+      <div className="shell" data-theme={page.theme} data-window={windowState} data-game={playing || undefined}>
+        <header className="titlebar">
+          <div className="brand">
+            O<i>.</i>
           </div>
-        )}
-      </main>
-    </div>
+          <nav className="nav" aria-label="Principal">
+            {mainPages.map((p) => (
+              <button key={p.id} type="button" aria-current={p.id === pageId ? 'page' : undefined} onClick={() => setPageId(p.id)}>
+                {p.label}
+                {p.id === 'juego' && playing && <span className="nav-dot" aria-label="(jugando)" />}
+              </button>
+            ))}
+          </nav>
+          <div className="titlebar-end">
+            <button
+              type="button"
+              className="pill"
+              aria-current={pageId === 'ajustes' ? 'page' : undefined}
+              onClick={() => setPageId('ajustes')}
+            >
+              Ajustes
+            </button>
+          </div>
+        </header>
+
+        <main className="page" key={page.id} data-page={page.id}>
+          {page.id === 'panel' ? (
+            <Panel
+              hw={hw}
+              hwError={hwError}
+              onRescan={() => runScan(true)}
+              rescanning={scanning && loaded}
+              mem={mem}
+              info={info}
+              hasKey={hasKey}
+              onNavigate={setPageId}
+            />
+          ) : page.id === 'memoria' ? (
+            <Memoria visible={windowState !== 'oculta' && !playing} />
+          ) : (
+            <>
+              <p className="eyebrow">{page.eyebrow}</p>
+              <h1 className="display">{page.title}</h1>
+              <p className="lede">{page.lede}</p>
+            </>
+          )}
+
+          {page.id === 'optimizar' && <Optimizar />}
+          {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} />}
+          {page.id === 'juego' && <ModoJuego status={game} />}
+          {page.id === 'ajustes' && (
+            <Ajustes
+              settings={settings}
+              onSettings={setSettings}
+              onKeyChange={setHasKey}
+              onOpenGameMode={() => setPageId('juego')}
+              onOpenMemory={() => setPageId('memoria')}
+            />
+          )}
+        </main>
+
+        <Loader progress={scan} done={loaded} />
+      </div>
+    </EffectsContext.Provider>
   )
 }

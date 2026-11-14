@@ -392,6 +392,10 @@ export interface OptikaxApi {
     /** Comprueba la clave guardada contra la API (sin coste: no genera tokens). */
     test(): Promise<AiKeyTest>
   }
+  backup: {
+    /** Guarda una copia de los valores originales; null si el usuario cancela. */
+    export(): Promise<string | null>
+  }
   gameMode: {
     status(): Promise<GameModeStatus>
     /** Llega al detectar un juego, al cerrarlo y al cambiar los ajustes del modo. */
@@ -434,6 +438,7 @@ export const IPC = {
   aiAnalyze: 'ai:analyze',
   aiCancel: 'ai:cancel',
   aiProgress: 'ai:progress',
+  backupExport: 'backup:export',
   gameModeStatus: 'gamemode:status',
   gameModeChange: 'gamemode:change'
 } as const

@@ -46,18 +46,22 @@ export function ModoJuego({ status }: { status: GameModeStatus | null }) {
   return (
     <>
       <section className="block">
-        <div className="block-head">
-          <p className="eyebrow">{activo ? 'Vigilando cada 3 s' : 'Apagado'}</p>
+        <div className="game-toggle">
           <button
             type="button"
             role="switch"
             aria-checked={activo}
-            className={activo ? 'btn-primary' : 'pill'}
+            aria-labelledby="game-toggle-label"
+            className="switch switch-lg"
             disabled={!settings}
             onClick={() => save({ activo: !activo })}
-          >
-            {activo ? 'Modo Juego activado' : 'Activar Modo Juego'}
-          </button>
+          />
+          <div>
+            <p id="game-toggle-label" className="game-toggle-title">
+              Modo Juego {activo ? 'activado' : 'apagado'}
+            </p>
+            <p className="eyebrow">{activo ? 'Vigilando cada 3 s' : 'No detecta juegos'}</p>
+          </div>
         </div>
         <p className="lede">Sigue funcionando con la ventana cerrada: Optikax se queda en la bandeja del sistema.</p>
         {error && <p className="notice" data-kind="error">{error}</p>}

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import { IPC, type WindowState } from '@shared/types'
+import { startHidden } from './autostart'
 import { hasActiveGame, shutdownGameMode, startGameMode } from './gamemode'
 import { stopAutoClean } from './memory'
 import { worker } from './ps'
@@ -43,7 +44,10 @@ function createWindow(): void {
   })
   mainWindow = win
 
-  win.once('ready-to-show', () => win.show())
+  // Al arrancar con Windows (--hidden) se queda en la bandeja.
+  win.once('ready-to-show', () => {
+    if (!startHidden()) win.show()
+  })
 
   // El renderer pausa el 3D y los sondeos cuando la ventana no se ve.
   const notify = (): void => {
@@ -52,6 +56,8 @@ function createWindow(): void {
   for (const ev of ['focus', 'blur', 'minimize', 'restore', 'show', 'hide'] as const) {
     win.on(ev as 'focus', notify)
   }
+  // Estado inicial: si arranca oculta (--hidden) no llega ningún evento de ventana.
+  win.webContents.on('did-finish-load', notify)
 
   // Los enlaces (fuentes de la IA) se abren en el navegador, nunca dentro de la app.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -72,6 +78,19 @@ function createWindow(): void {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
+
+  // npm run capture: capturas de cada pantalla y medición de GPU (solo desarrollo).
+  if (!app.isPackaged && process.env['OPTIKAX_CAPTURE'] === '1') {
+    win.webContents.once('did-finish-load', () => {
+      void import('./capture')
+        .then((m) => m.runCapture(win))
+        .catch((err: unknown) => console.error('[capture]', err))
+        .finally(() => {
+          quitting = true
+          app.quit()
+        })
+    })
+  }
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
   if (!app.isPackaged && devUrl) void win.loadURL(devUrl)
@@ -108,8 +127,17 @@ if (verifyMode === '1' || verifyMode === 'ai' || verifyMode === 'game') {
 } else {
   app.on('second-instance', showWindow)
 
-  void app.whenReady().then(() => {
+  const capture = !app.isPackaged && process.env['OPTIKAX_CAPTURE'] === '1'
+  if (capture) {
+    app.setPath('userData', join(app.getPath('temp'), 'optikax-capture'))
+    // Si otra ventana la tapa, Chromium deja de pintar y la captura saldría con un fotograma viejo.
+    app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+    app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+  }
+
+  void app.whenReady().then(async () => {
     app.setAppUserModelId('com.optikax.app')
+    if (capture) (await import('./capture')).seedCapture()
     registerIpc(() => mainWindow)
     createWindow()
     createTray(showWindow)
