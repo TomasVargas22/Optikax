@@ -47,7 +47,10 @@ export function App() {
     void window.optikax.gameMode.status().then(setGame)
     const offGame = window.optikax.gameMode.onChange(setGame)
     const offWindow = window.optikax.app.onWindowState(setWindowState)
+    // Única copia de los ajustes en la interfaz: se actualiza con cada cambio, venga de donde venga.
+    const offSettings = window.optikax.settings.onChange(setSettings)
     return () => {
+      offSettings()
       offScan()
       offGame()
       offWindow()
@@ -99,7 +102,12 @@ export function App() {
             {mainPages.map((p) => (
               <button key={p.id} type="button" aria-current={p.id === pageId ? 'page' : undefined} onClick={() => setPageId(p.id)}>
                 {p.label}
-                {p.id === 'juego' && playing && <span className="nav-dot" aria-label="(jugando)" />}
+                {p.id === 'juego' && playing && (
+                  <>
+                    <span className="nav-dot" aria-hidden="true" />
+                    <span className="sr-only"> (jugando)</span>
+                  </>
+                )}
               </button>
             ))}
           </nav>
@@ -139,7 +147,7 @@ export function App() {
 
           {page.id === 'optimizar' && <Optimizar />}
           {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} />}
-          {page.id === 'juego' && <ModoJuego status={game} />}
+          {page.id === 'juego' && <ModoJuego status={game} settings={settings} />}
           {page.id === 'ajustes' && (
             <Ajustes
               settings={settings}

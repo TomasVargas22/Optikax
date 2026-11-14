@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { GameModeStatus, Settings } from '@shared/types'
 import { errorMessage } from './errors'
 
@@ -12,22 +12,16 @@ function duration(sec: number): string {
 
 const timeText = (iso: string): string => new Date(iso).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })
 
-/** Pantalla Modo Juego: funcional; el diseño final llega en la fase de interfaz. */
-export function ModoJuego({ status }: { status: GameModeStatus | null }) {
-  const [settings, setSettings] = useState<Settings | null>(null)
+/** Pantalla Modo Juego. Los ajustes llegan de App, que los mantiene al día con cada cambio. */
+export function ModoJuego({ status, settings }: { status: GameModeStatus | null; settings: Settings | null }) {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    void window.optikax.settings.get().then(setSettings)
-  }, [])
 
   const save = (patch: Partial<Settings['modoJuego']>): void => {
     if (!settings) return
     setError(null)
     window.optikax.settings
       .update({ modoJuego: { ...settings.modoJuego, ...patch } })
-      .then(setSettings)
       .catch((e: unknown) => setError(errorMessage(e)))
   }
 
@@ -40,7 +34,8 @@ export function ModoJuego({ status }: { status: GameModeStatus | null }) {
     setDraft('')
   }
 
-  const activo = settings?.modoJuego.activo ?? status?.activo ?? false
+  // El estado vivo del proceso principal manda: también cambia desde el menú de la bandeja.
+  const activo = status?.activo ?? settings?.modoJuego.activo ?? false
   const juego = status?.juego
 
   return (

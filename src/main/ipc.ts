@@ -17,7 +17,7 @@ import { getHardware } from './hardware'
 import { memoryState, onMemoryEvent, purge, PURGE_KINDS, syncAutoClean } from './memory'
 import { native } from './native'
 import { applyTweaks, listTweaks, revertTweaks, sanitizeIds } from './tweaks'
-import { clearApiKey, getSettings, hasApiKey, setApiKey, updateSettings } from './store'
+import { clearApiKey, getSettings, hasApiKey, onSettingsChange, setApiKey, updateSettings } from './store'
 
 export const TITLEBAR = {
   oscuro: { color: '#010101', symbolColor: '#F4F4F6' },
@@ -48,6 +48,10 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   })
 
   ipcMain.handle(IPC.settingsGet, () => getSettings())
+  onSettingsChange((s) => {
+    const win = getWindow()
+    if (win && !win.isDestroyed()) win.webContents.send(IPC.settingsChanged, s)
+  })
   ipcMain.handle(IPC.settingsUpdate, async (_e, patch: DeepPartial<Settings>) => {
     const before = getSettings().iniciarConWindows
     const next = updateSettings(patch)

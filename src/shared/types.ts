@@ -365,6 +365,8 @@ export interface OptikaxApi {
   settings: {
     get(): Promise<Settings>
     update(patch: DeepPartial<Settings>): Promise<Settings>
+    /** Llega con cada cambio, también los hechos desde la bandeja. */
+    onChange(cb: (s: Settings) => void): () => void
   }
   hardware: {
     /** Devuelve el último escaneo; escanea si aún no hay uno o si `force` es true. */
@@ -421,6 +423,7 @@ export const IPC = {
   windowState: 'app:window-state',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
+  settingsChanged: 'settings:changed',
   hardwareScan: 'hardware:scan',
   hardwareProgress: 'hardware:progress',
   tweaksList: 'tweaks:list',

@@ -3,3 +3,10 @@ out/
 dist/
 *.log
 .verify-backup/
+
+# Documentos de trabajo: notas, informes y capturas que se regeneran (no van al repo)
+docs/DECISIONES.md
+docs/REVISION_FINAL.md
+docs/VERIFICACION_AJUSTES.md
+docs/PROMPT_CONTINUACION.md
+docs/capturas/

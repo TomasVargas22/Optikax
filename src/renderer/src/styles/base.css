@@ -594,7 +594,7 @@ input {
   padding: 0 var(--s-3);
   border-radius: var(--r-md);
   background: var(--surface-2);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--field-border);
   color: var(--text-3);
 }
 .field-input:focus-within {
@@ -664,6 +664,9 @@ input {
 }
 .notice[data-kind='error'] {
   border-color: var(--danger);
+}
+.notice[data-kind='warn'] {
+  border-color: var(--warn);
 }
 
 .tweaks {
@@ -768,7 +771,7 @@ input {
   flex: 1 1 320px;
   min-height: 40px;
   padding: 0 var(--s-4);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--field-border);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);

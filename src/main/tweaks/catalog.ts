@@ -1,6 +1,7 @@
 import type { HardwareProfile, TweakCategory, TweakId, TweakRestart } from '@shared/types'
 import {
   power,
+  POWER_PLANS,
   regKey,
   regRead,
   regWrite,
@@ -152,9 +153,7 @@ const PERSONALIZE = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\
 const POWER_THROTTLING = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerThrottling'
 const TCPIP_INTERFACES = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces'
 
-const ULTIMATE = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-const HIGH_PERFORMANCE = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
-const BALANCED = '381b4222-f694-41f0-9685-ff5bb260df2e'
+const { ULTIMATE, HIGH_PERFORMANCE, BALANCED } = POWER_PLANS
 
 const GB = 2 ** 30
 const soloEscritorio = (ctx: TweakContext): string | null =>

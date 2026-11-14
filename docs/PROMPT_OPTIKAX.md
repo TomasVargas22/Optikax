@@ -397,11 +397,19 @@ Navegación con una **barra en forma de pastilla centrada arriba**, como el shot
 10. **Revisión final:** `npm run typecheck`, `/code-review`, critique de diseño y auditoría de accesibilidad.
 
 ## 8. CRITERIOS DE TERMINADO
-- [ ] No hay ninguna llamada que modifique servicios o seguridad (búsqueda en el repo: `Set-Service|sc config|Stop-Service|bcdedit|DisableAntiSpyware` → 0 resultados).
-- [ ] Todos los ajustes del catálogo hacen el ciclo aplicar/revertir y dejan el registro idéntico al original.
-- [ ] La purga de standby funciona y muestra los MB liberados reales.
+- [x] No hay ninguna llamada que modifique servicios o seguridad (búsqueda en el repo: `Set-Service|sc config|Stop-Service|bcdedit|DisableAntiSpyware` → 0 resultados).
+  *Evidencia (14/11/2026):* `git grep` en `src`, `resources` y `scripts` devuelve 0 resultados.
+- [x] Todos los ajustes del catálogo hacen el ciclo aplicar/revertir y dejan el registro idéntico al original.
+  *Evidencia:* `npm run verify:tweaks` → `TODO OK` en los 13 ajustes y 9 casos borde, comparando fotos del registro valor por valor. Ver `docs/VERIFICACION_AJUSTES.md`.
+- [x] La purga de standby funciona y muestra los MB liberados reales.
+  *Evidencia:* `npm run verify:game` registra las purgas reales con sus bytes (por ejemplo, 1,1 GB y 7 GB). La pantalla Memoria muestra "+N MB" con el valor medido antes y después.
 - [ ] El análisis IA cita fuentes reales y solo recomienda IDs del catálogo.
-- [ ] El Modo Juego detecta, optimiza y restaura.
-- [ ] El 3D no consume GPU con la ventana oculta ni durante un juego.
-- [ ] La interfaz sigue la sección 6: paleta, dos fuentes, lima como único acento y ritmo oscuro/claro.
+  *Parcial:* el filtro de IDs está verificado (`npm run verify:ai`, 13/13: descarta `disable_defender`). Las fuentes salen de `web_search_tool_result`. **Falta probarlo con una API key real.**
+- [x] El Modo Juego detecta, optimiza y restaura.
+  *Evidencia:* `npm run verify:game` 24/24, con un exe falso en `steamapps\common\Test`. Además detectó de verdad Call of Duty MW II y The Farmer Was Replaced.
+- [x] El 3D no consume GPU con la ventana oculta ni durante un juego.
+  *Evidencia:* `npm run capture`, con la ventana minimizada: 0–1 % de GPU, que es la línea base de Electron. Con un juego abierto la escena se desactiva por la misma regla (`active = visible && !juego`), pero no se midió la GPU en ese estado.
+- [x] La interfaz sigue la sección 6: paleta, dos fuentes, lima como único acento y ritmo oscuro/claro.
+  *Evidencia:* capturas en `docs/capturas/` y crítica de diseño en `docs/REVISION_FINAL.md`.
 - [ ] El instalador `.exe` funciona en una sesión limpia.
+  *Parcial:* `dist\Optikax Setup 0.1.0.exe` se genera y la app empaquetada (`win-unpacked`) arranca, encuentra sus scripts y funciona. **Falta instalarlo en una sesión limpia.**

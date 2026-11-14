@@ -1,9 +1,0 @@
-estado ventana: visible · movimiento reducido: true · canvas 3D: 2
-captura 01-panel.png
-captura 02-optimizar.png
-captura 03-memoria.png
-captura 04-analisis.png
-captura 05-modo-juego.png
-captura 06-ajustes.png
-GPU con el Panel visible (estado visible): 2.07%
-GPU con la ventana minimizada: 0%

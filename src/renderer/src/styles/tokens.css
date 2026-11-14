@@ -40,8 +40,11 @@
   --surface-2: #161517;
   --text: var(--paper);
   --text-2: #a39ca7; /* 7.6:1 sobre --ink */
-  --text-3: var(--smoke);
+  /* Un punto más claro que --smoke: 4,9:1 o más también sobre las tarjetas (WCAG 1.4.3). */
+  --text-3: #8a8290;
   --hairline: rgba(255, 255, 255, 0.08);
+  /* Borde de campos de texto: 3:1 sobre el fondo y las superficies (WCAG 1.4.11). */
+  --field-border: #6a666e;
   --hairline-strong: rgba(255, 255, 255, 0.16);
   --glass: rgba(22, 21, 23, 0.55);
   --nav-bg: rgba(22, 21, 23, 0.72);
@@ -57,6 +60,7 @@
   --text-2: #55525a; /* 7.3:1 sobre --paper */
   --text-3: #6f6a74;
   --hairline: rgba(1, 1, 1, 0.08);
+  --field-border: #8a8590;
   --hairline-strong: rgba(1, 1, 1, 0.16);
   --glass: rgba(255, 255, 255, 0.6);
   --nav-bg: rgba(255, 255, 255, 0.72);

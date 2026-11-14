@@ -51,7 +51,11 @@ export class AiError extends Error {}
 
 // ---------- Estado ----------
 
-let running: { promise: Promise<AiAnalysis>; abort: AbortController } | null = null
+interface Running {
+  promise: Promise<AiAnalysis>
+  abort: AbortController
+}
+let running: Running | null = null
 
 const cacheFile = (): string => join(app.getPath('userData'), 'analysis.json')
 
@@ -229,6 +233,9 @@ export function analyze(emit: (p: AiProgress) => void): Promise<AiAnalysis> {
   const abort = new AbortController()
 
   const promise = (async (): Promise<AiAnalysis> => {
+    // Cede un tick: si client() lanzara en el acto, el finally se ejecutaría antes de que
+    // `running` se asigne abajo y quedaría apuntando para siempre a una promesa rechazada.
+    await Promise.resolve()
     try {
       const api = client()
       const [hw, tweaks] = await Promise.all([getHardware(false, () => {}), listTweaks()])
@@ -256,7 +263,8 @@ export function analyze(emit: (p: AiProgress) => void): Promise<AiAnalysis> {
     } catch (err) {
       throw friendly(err)
     } finally {
-      running = null
+      // Solo se suelta si sigue siendo esta ejecución (el cast evita el estrechamiento a never).
+      if ((running as Running | null)?.abort === abort) running = null
     }
   })()
 

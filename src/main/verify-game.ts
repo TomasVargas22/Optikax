@@ -16,11 +16,9 @@ import { gameModeStatus, recoverPending, shutdownGameMode, startGameMode } from 
 import { memoryState } from './memory'
 import { native } from './native'
 import { writeAtomic } from './store'
-import { power } from './tweaks/sys'
+import { power, POWER_PLANS } from './tweaks/sys'
 
-const BALANCED = '381b4222-f694-41f0-9685-ff5bb260df2e'
-const ULTIMATE = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-const HIGH_PERFORMANCE = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
+const { BALANCED, ULTIMATE, HIGH_PERFORMANCE } = POWER_PLANS
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
@@ -82,7 +80,13 @@ export async function runGameVerification(): Promise<number> {
 
     await startGameMode((s) => (last = s))
     const child = spawn(exe, ['-n', '60', '127.0.0.1'], { windowsHide: true, stdio: 'ignore' })
-    const detected = await waitFor(async () => (await gameModeStatus()).juego?.pid === child.pid, 15_000)
+    // Se espera a que terminen todas las acciones (la última es activar la limpieza agresiva):
+    // con mucha standby, la purga tarda y el plan todavía no habría cambiado.
+    const detected = await waitFor(async () => {
+      const j = (await gameModeStatus()).juego
+      return j !== null && j.pid === child.pid && j.acciones.includes('Limpieza automática agresiva')
+    }, 30_000)
+    await sleep(500)
     const status = await gameModeStatus()
     check('detecta TestGame.exe en steamapps\\common', detected, status.juego ? `${status.juego.name} · ${status.juego.motivo}` : 'no')
     if (status.juego) console.log(`[verify-game]       acciones: ${status.juego.acciones.join(' | ')}`)

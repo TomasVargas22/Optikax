@@ -191,7 +191,7 @@ export function Optimizar() {
         )}
       </div>
 
-      <ul className="products" onPointerLeave={() => setHover(null)}>
+      <ul className="products">
         {tweaks.map((t) => {
           const isSelectable = !t.activo && t.motivoNoAplica === null && busy === null
           const isSelected = selected.has(t.id)
@@ -204,6 +204,7 @@ export function Optimizar() {
               data-state={t.activo ? 'activo' : t.motivoNoAplica ? 'no-aplica' : 'inactivo'}
               data-selected={isSelected || undefined}
               onPointerEnter={() => setHover(isSelectable ? (isSelected ? 'Quitar' : 'Aplicar') : 'Ver')}
+              onPointerLeave={() => setHover(null)}
               onClick={() => {
                 if (!isSelectable) return
                 toggle(t.id)

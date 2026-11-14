@@ -6,7 +6,7 @@ import { findConflicts, pickGame } from './game-detect'
 import { onMemoryEvent, purge, setGameBoost } from './memory'
 import { native } from './native'
 import { getSettings, writeAtomic } from './store'
-import { power } from './tweaks/sys'
+import { power, POWER_PLANS } from './tweaks/sys'
 
 /**
  * Modo Juego automático: sondea los procesos cada 3 s y, al detectar un juego, sube su prioridad,
@@ -17,15 +17,12 @@ import { power } from './tweaks/sys'
 const POLL_MS = 3_000
 const MAX_SESSIONS = 50
 
-const ULTIMATE = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-const HIGH_PERFORMANCE = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
-const BALANCED = '381b4222-f694-41f0-9685-ff5bb260df2e'
-const POWER_SAVER = 'a1841308-3541-4fab-bc81-f71556f20b4a'
+const { ULTIMATE, HIGH_PERFORMANCE, BALANCED, POWER_SAVER } = POWER_PLANS
 /**
  * Solo se cambia el plan si el activo es uno de ahorro de Windows. Un plan propio (p. ej. uno de
  * alto rendimiento ajustado a mano o el de KernelOS) se respeta: no hay forma fiable de saber qué hace.
  */
-const LOW_POWER_PLANS = [BALANCED, POWER_SAVER]
+const LOW_POWER_PLANS: readonly string[] = [BALANCED, POWER_SAVER]
 
 interface Pending extends ActiveGame {
   /** Plan que había antes y el que puso Optikax; null si no se tocó. */
@@ -55,12 +52,17 @@ function readJson<T>(file: string, fallback: T): T {
 const savePending = (p: Pending): void => writeAtomic(pendingFile(), JSON.stringify(p, null, 2))
 const clearPending = (): void => rmSync(pendingFile(), { force: true })
 
+// El historial se lee del disco una vez y después vive en memoria.
+let sessionsCache: GameSession[] | null = null
+
 function sessions(): GameSession[] {
-  return readJson<GameSession[]>(sessionsFile(), [])
+  sessionsCache ??= readJson<GameSession[]>(sessionsFile(), [])
+  return sessionsCache
 }
 
 function addSession(s: GameSession): void {
-  writeAtomic(sessionsFile(), JSON.stringify([s, ...sessions()].slice(0, MAX_SESSIONS), null, 2))
+  sessionsCache = [s, ...sessions()].slice(0, MAX_SESSIONS)
+  writeAtomic(sessionsFile(), JSON.stringify(sessionsCache, null, 2))
 }
 
 const publicGame = (p: Pending): ActiveGame => ({
@@ -78,7 +80,7 @@ export async function gameModeStatus(): Promise<GameModeStatus> {
   return {
     activo: getSettings().modoJuego.activo,
     juego: current ? publicGame(current) : null,
-    sesiones: sessions(),
+    sesiones: [...sessions()],
     conflictos: conflicts
   }
 }

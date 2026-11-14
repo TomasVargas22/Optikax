@@ -6,6 +6,7 @@ import {
   type MemoryEvent,
   type OptikaxApi,
   type ScanProgress,
+  type Settings,
   type WindowState
 } from '@shared/types'
 
@@ -21,7 +22,12 @@ const api: OptikaxApi = {
   },
   settings: {
     get: () => ipcRenderer.invoke(IPC.settingsGet),
-    update: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch)
+    update: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),
+    onChange: (cb) => {
+      const listener = (_e: IpcRendererEvent, s: Settings): void => cb(s)
+      ipcRenderer.on(IPC.settingsChanged, listener)
+      return () => ipcRenderer.removeListener(IPC.settingsChanged, listener)
+    }
   },
   hardware: {
     scan: (force) => ipcRenderer.invoke(IPC.hardwareScan, force === true),

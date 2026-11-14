@@ -16,6 +16,15 @@ const PERFIL = { entrada: 'Gama de entrada', media: 'Gama media', alta: 'Gama al
 const dateText = (iso: string): string => new Date(iso).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })
 const pad = (n: number): string => String(n).padStart(2, '0')
 
+/** Dominio de la fuente; una URL mal formada no debe tumbar la pantalla. */
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
 interface Slide {
   key: string
   tag: string
@@ -26,8 +35,10 @@ interface Slide {
 
 /** Carrusel horizontal de recomendaciones: línea de progreso, contador y flechas en pastilla. */
 function Carousel({ slides }: { slides: Slide[] }) {
-  const [index, setIndex] = useState(0)
+  const [rawIndex, setIndex] = useState(0)
   const last = slides.length - 1
+  // Tras un re-análisis con menos recomendaciones, el índice anterior podría quedar fuera de rango.
+  const index = Math.min(rawIndex, Math.max(0, last))
   const go = (i: number): void => setIndex(Math.max(0, Math.min(last, i)))
 
   return (
@@ -219,7 +230,7 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
             </p>
             <p className="lede">{rec.resumen}</p>
             {rec.advertencias.map((a) => (
-              <p key={a} className="notice" data-kind="error">
+              <p key={a} className="notice" data-kind="warn">
                 {a}
               </p>
             ))}
@@ -273,7 +284,7 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
                     <a href={f.url} target="_blank" rel="noreferrer">
                       {f.title}
                     </a>
-                    <span>{new URL(f.url).hostname.replace(/^www\./, '')}</span>
+                    <span>{hostname(f.url)}</span>
                   </li>
                 ))}
               </ul>

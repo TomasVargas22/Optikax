@@ -50,6 +50,14 @@ export interface PowerState {
   schemes: string[]
 }
 
+/** GUID de los planes de energía de Windows (iguales en todos los idiomas). */
+export const POWER_PLANS = {
+  ULTIMATE: 'e9a42b02-d5df-448d-aa00-03f14749eb61',
+  HIGH_PERFORMANCE: '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c',
+  BALANCED: '381b4222-f694-41f0-9685-ff5bb260df2e',
+  POWER_SAVER: 'a1841308-3541-4fab-bc81-f71556f20b4a'
+} as const
+
 // powercfg a veces tarda más de 10 s (otro programa tocando planes a la vez); no debe impedir restaurar.
 const POWER_TIMEOUT_MS = 30_000
 

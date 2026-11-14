@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, powerMonitor, shell } from 'electron'
 import { join } from 'node:path'
 import { IPC, type WindowState } from '@shared/types'
 import { startHidden } from './autostart'
@@ -11,6 +11,12 @@ import { createTray, destroyTray, updateTray } from './tray'
 let mainWindow: BrowserWindow | null = null
 /** true solo al salir desde la bandeja o el sistema: cerrar la ventana la oculta. */
 let quitting = false
+
+/** Apagado o cierre de sesión: hay que dejar cerrar de verdad y restaurar el plan si había un juego. */
+function onSystemEnd(): void {
+  quitting = true
+  if (hasActiveGame()) void shutdownGameMode()
+}
 
 function showWindow(): void {
   if (!mainWindow) return createWindow()
@@ -68,6 +74,7 @@ function createWindow(): void {
     if (url !== win.webContents.getURL()) e.preventDefault()
   })
 
+  win.on('session-end', onSystemEnd)
   // Cerrar la ventana la manda a la bandeja: el Modo Juego sigue funcionando.
   win.on('close', (e) => {
     if (quitting) return
@@ -149,6 +156,10 @@ if (verifyMode === '1' || verifyMode === 'ai' || verifyMode === 'game') {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
   })
+
+  // Al apagar o cerrar sesión, la ventana debe cerrarse de verdad: si se ocultara a la bandeja,
+  // Windows mostraría "Optikax impide el apagado". Se restaura el plan si había un juego.
+  void app.whenReady().then(() => powerMonitor.on('shutdown', onSystemEnd))
 
   // Con un juego abierto, se restaura el plan de energía antes de salir.
   app.on('before-quit', (e) => {

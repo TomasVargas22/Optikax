@@ -43,7 +43,8 @@ export function Loader({ progress, done }: { progress: ScanProgress | null; done
         O<i>.</i>
         <span className="loader-spark">✳</span>
       </div>
-      <p className="loader-count num" aria-label={`Cargando ${shown} por ciento`}>
+      {/* Oculto para lectores de pantalla: cambia cada 24 ms y llenaría la región viva de anuncios. */}
+      <p className="loader-count num" aria-hidden="true">
         {shown}
       </p>
     </div>

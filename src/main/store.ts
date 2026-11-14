@@ -48,9 +48,17 @@ export function getSettings(): Settings {
   return cache
 }
 
+const settingsListeners = new Set<(s: Settings) => void>()
+
+/** Avisa de cada cambio, venga de la interfaz, de la bandeja o de otro módulo. */
+export function onSettingsChange(cb: (s: Settings) => void): void {
+  settingsListeners.add(cb)
+}
+
 export function updateSettings(patch: DeepPartial<Settings>): Settings {
   cache = merge(getSettings(), patch)
   writeAtomic(settingsFile(), JSON.stringify(cache, null, 2))
+  for (const cb of settingsListeners) cb(cache)
   return cache
 }
 

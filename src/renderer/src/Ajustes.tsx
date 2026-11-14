@@ -148,13 +148,12 @@ export function Ajustes({ settings, onSettings, onKeyChange, onOpenGameMode, onO
             <p>{EFFECTS.find((e) => e.value === effects)?.note}</p>
           </div>
         </div>
-        <div className="segmented" role="radiogroup" aria-label="Efectos 3D">
+        <div className="segmented" role="group" aria-label="Efectos 3D">
           {EFFECTS.map((e) => (
             <button
               key={e.value}
               type="button"
-              role="radio"
-              aria-checked={effects === e.value}
+              aria-pressed={effects === e.value}
               disabled={!settings}
               onClick={() => save({ efectos3d: e.value })}
             >
