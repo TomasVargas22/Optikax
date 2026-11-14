@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { TitleBarTheme } from '@shared/types'
 
-export type PageId = 'panel' | 'optimizar' | 'memoria' | 'ia' | 'juego' | 'ajustes'
+export type PageId = 'panel' | 'optimizar' | 'memoria' | 'juego' | 'ajustes'
 
 export interface PageDef {
   id: PageId
@@ -24,7 +24,7 @@ export const PAGES: PageDef[] = [
         Detecta <em>ajusta</em> juega
       </>
     ),
-    lede: 'Tu hardware, analizado contra lo que recomiendan los foros, y aplicado solo con ajustes seguros y reversibles.'
+    lede: 'Detecta tu hardware y lo ajusta solo con cambios seguros y reversibles.'
   },
   {
     id: 'optimizar',
@@ -51,18 +51,6 @@ export const PAGES: PageDef[] = [
     lede: 'Limpieza de la standby list y los working sets, a mano o automática.'
   },
   {
-    id: 'ia',
-    label: 'Análisis IA',
-    theme: 'oscuro',
-    eyebrow: 'Claude + búsqueda web',
-    title: (
-      <>
-        Lo que dicen <em>los foros</em>
-      </>
-    ),
-    lede: 'Busca qué recomienda la comunidad para tus componentes exactos y te lo explica con fuentes.'
-  },
-  {
     id: 'juego',
     label: 'Modo Juego',
     theme: 'oscuro',
@@ -84,6 +72,6 @@ export const PAGES: PageDef[] = [
         A tu <em>manera</em>
       </>
     ),
-    lede: 'API key, efectos 3D, inicio con Windows y umbrales de memoria.'
+    lede: 'Efectos 3D, inicio con Windows, memoria, Modo Juego y respaldo.'
   }
 ]

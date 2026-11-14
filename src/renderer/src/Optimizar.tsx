@@ -6,8 +6,7 @@ import {
   type TweakActionResult,
   type TweakCategory,
   type TweakId,
-  type TweakInfo,
-  type TweakRecommendation
+  type TweakInfo
 } from '@shared/types'
 import { errorMessage } from './errors'
 
@@ -19,7 +18,8 @@ const CATEGORY_LABEL: Record<TweakCategory, string> = {
   entrada: 'Mouse',
   red: 'Red',
   visual: 'Visual',
-  memoria: 'Memoria'
+  memoria: 'Memoria',
+  almacenamiento: 'Almacenamiento'
 }
 
 /** Íconos de línea monocromos, uno por categoría. */
@@ -62,6 +62,13 @@ const ICON: Record<TweakCategory, ReactNode> = {
     <>
       <rect x="2" y="7" width="20" height="10" rx="1" />
       <path d="M6 10v4M10 10v4M14 10v4M18 10v4M5 17v3M19 17v3" />
+    </>
+  ),
+  almacenamiento: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="12" cy="11" r="4" />
+      <path d="M12 11h.01M7 17h2" />
     </>
   )
 }
@@ -123,12 +130,10 @@ export function Optimizar() {
   const [busy, setBusy] = useState<'aplicar' | 'revertir' | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [ia, setIa] = useState<TweakRecommendation[] | null>(null)
   const [hover, setHover] = useState<string | null>(null)
 
   useEffect(() => {
     window.optikax.tweaks.list().then(setTweaks, (e: unknown) => setError(errorMessage(e)))
-    void window.optikax.ai.last().then((a) => setIa(a?.recomendacion.ajustes ?? null))
   }, [])
 
   const run = (action: 'aplicar' | 'revertir', ids?: TweakId[]): void => {
@@ -156,9 +161,8 @@ export function Optimizar() {
   if (error && !tweaks) return <p className="lede">No se pudieron leer los ajustes: {error}</p>
   if (!tweaks) return <p className="block eyebrow">Leyendo el estado de los ajustes…</p>
 
-  // Sin análisis de IA solo entran los de riesgo bajo; con él, lo que diga la IA (ver recommendedTweaks).
-  const recommended = recommendedTweaks(tweaks, ia)
-  const iaById = new Map((ia ?? []).map((r) => [r.id, r]))
+  // Recomendados: los de riesgo bajo que aplican y faltan (ver recommendedTweaks).
+  const recommended = recommendedTweaks(tweaks)
   const revertibles = tweaks.filter((t) => t.revertible)
   const activos = tweaks.filter((t) => t.activo).length
 
@@ -196,7 +200,6 @@ export function Optimizar() {
           const isSelectable = !t.activo && t.motivoNoAplica === null && busy === null
           const isSelected = selected.has(t.id)
           const restart = RESTART_LABEL[t.reinicio]
-          const rec = iaById.get(t.id)
           return (
             <li
               key={t.id}
@@ -238,11 +241,6 @@ export function Optimizar() {
               <h3>{t.titulo}</h3>
               <p>{t.descripcion}</p>
               {t.nota && <p className="product-note">{t.nota}</p>}
-              {rec?.aplicar && (
-                <p className="product-ia">
-                  <b>Recomendado por la IA</b> {rec.motivo}
-                </p>
-              )}
               <div className="product-foot">
                 {t.motivoNoAplica ? (
                   <span className="product-status">No aplica · {t.motivoNoAplica}</span>
@@ -288,7 +286,7 @@ export function Optimizar() {
               type="button"
               className="pill"
               disabled={busy !== null}
-              title="Los de riesgo medio solo entran si el análisis de IA los recomienda para tu equipo."
+              title="Selecciona los de riesgo bajo. Los de riesgo medio tienen un efecto discutido: elígelos a mano si te interesan."
               onClick={() => setSelected(new Set(recommended))}
             >
               Seleccionar recomendados

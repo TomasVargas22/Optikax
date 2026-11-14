@@ -403,8 +403,8 @@ Navegación con una **barra en forma de pastilla centrada arriba**, como el shot
   *Evidencia:* `npm run verify:tweaks` → `TODO OK` en los 13 ajustes y 9 casos borde, comparando fotos del registro valor por valor. Ver `docs/VERIFICACION_AJUSTES.md`.
 - [x] La purga de standby funciona y muestra los MB liberados reales.
   *Evidencia:* `npm run verify:game` registra las purgas reales con sus bytes (por ejemplo, 1,1 GB y 7 GB). La pantalla Memoria muestra "+N MB" con el valor medido antes y después.
-- [ ] El análisis IA cita fuentes reales y solo recomienda IDs del catálogo.
-  *Parcial:* el filtro de IDs está verificado (`npm run verify:ai`, 13/13: descarta `disable_defender`). Las fuentes salen de `web_search_tool_result`. **Falta probarlo con una API key real.**
+- ~~El análisis IA cita fuentes reales y solo recomienda IDs del catálogo.~~
+  *Retirado el 14/11/2026 por decisión del usuario:* se quitó todo el análisis con IA (Claude y Gemini) y Optikax es 100 % offline. Las recomendaciones salen de las reglas locales: ajustes de riesgo bajo que aplican al equipo.
 - [x] El Modo Juego detecta, optimiza y restaura.
   *Evidencia:* `npm run verify:game` 24/24, con un exe falso en `steamapps\common\Test`. Además detectó de verdad Call of Duty MW II y The Farmer Was Replaced.
 - [x] El 3D no consume GPU con la ventana oculta ni durante un juego.

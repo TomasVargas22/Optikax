@@ -2,13 +2,7 @@
 
 export type Effects3D = 'auto' | 'siempre' | 'nunca'
 
-/** Proveedor del análisis con IA. Claude es el predeterminado; Gemini es una alternativa. */
-export const AI_PROVIDERS = ['anthropic', 'gemini'] as const
-export type AiProvider = (typeof AI_PROVIDERS)[number]
-export const AI_PROVIDER_LABEL: Record<AiProvider, string> = { anthropic: 'Claude (Anthropic)', gemini: 'Gemini (Google)' }
-
 export interface Settings {
-  ia: { proveedor: AiProvider }
   /** Efectos 3D (three.js): auto los pausa según el estado de la ventana y del juego. */
   efectos3d: Effects3D
   iniciarConWindows: boolean
@@ -27,7 +21,6 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  ia: { proveedor: 'anthropic' },
   efectos3d: 'auto',
   iniciarConWindows: false,
   ram: { autoLimpieza: false, umbralStandbyMB: 0, umbralLibreMB: 0 },
@@ -208,11 +201,12 @@ export const TWEAK_IDS = [
   'power_throttling_off',
   'network_throttling_off',
   'nagle_off',
-  'memory_compression_off'
+  'memory_compression_off',
+  'trim_on'
 ] as const
 
 export type TweakId = (typeof TWEAK_IDS)[number]
-export type TweakCategory = 'energia' | 'juego' | 'gpu' | 'cpu' | 'entrada' | 'red' | 'visual' | 'memoria'
+export type TweakCategory = 'energia' | 'juego' | 'gpu' | 'cpu' | 'entrada' | 'red' | 'visual' | 'memoria' | 'almacenamiento'
 /** Qué hace falta para que el cambio surta efecto. */
 export type TweakRestart = 'no' | 'sesion' | 'reinicio'
 
@@ -233,29 +227,74 @@ export interface TweakInfo {
   aplicadoEn: string | null
 }
 
-/** Recomendación de la IA para un ajuste (fase de análisis). */
-export interface TweakRecommendation {
-  id: TweakId
-  aplicar: boolean
-  motivo: string
+/**
+ * Ajustes que entran en "Seleccionar recomendados", en orden del catálogo: los de riesgo bajo
+ * que aplican a este equipo y aún no están activos. Los de riesgo medio los elige el usuario a mano.
+ */
+export function recommendedTweaks(tweaks: TweakInfo[]): TweakId[] {
+  return tweaks.filter((t) => !t.activo && t.motivoNoAplica === null && t.riesgo === 'bajo').map((t) => t.id)
 }
 
-/**
- * Ajustes que entran en "Aplicar recomendados", en orden del catálogo.
- * - Solo los que aplican a este equipo y aún no están activos.
- * - Riesgo bajo: siempre, salvo que la IA diga explícitamente que no.
- * - Riesgo medio: solo si la IA lo recomienda con un motivo concreto.
- */
-export function recommendedTweaks(tweaks: TweakInfo[], ia: TweakRecommendation[] | null = null): TweakId[] {
-  const byId = new Map((ia ?? []).map((r) => [r.id, r]))
-  return tweaks
-    .filter((t) => !t.activo && t.motivoNoAplica === null)
-    .filter((t) => {
-      const rec = byId.get(t.id)
-      if (t.riesgo === 'bajo') return rec?.aplicar !== false
-      return rec?.aplicar === true && rec.motivo.trim().length > 0
-    })
-    .map((t) => t.id)
+// ---------- Almacenamiento y perfil del equipo ----------
+
+export interface StorageVolume {
+  letter: string
+  label: string
+  fileSystem: string
+  sizeBytes: number
+  freeBytes: number
+  /** "SSD", "HDD" o "Unspecified", según Windows. */
+  mediaType: string
+  /** "NVMe", "SATA", "USB"… */
+  busType: string
+  model: string | null
+  isSystem: boolean
+}
+
+export interface InstalledGame {
+  name: string
+  store: 'Steam' | 'Epic'
+  path: string
+  sizeBytes: number
+  letter: string
+}
+
+/** Lo que devuelve resources/scripts/storage.ps1 (solo lectura). */
+export interface StorageInfo {
+  volumes: StorageVolume[]
+  games: InstalledGame[]
+  /** null si no se pudo leer. */
+  trimNtfs: boolean | null
+}
+
+export type ProfileComponent = 'cpu' | 'gpu' | 'ram' | 'placa' | 'almacenamiento' | 'pantalla' | 'windows'
+
+export interface ProfileRecommendation {
+  id: string
+  componente: ProfileComponent
+  titulo: string
+  /** Por qué, para este equipo concreto. */
+  detalle: string
+  impacto: 'alto' | 'medio' | 'bajo'
+  /** automatico: lo aplica Optikax con un ajuste del catálogo. manual: pasos para el usuario. info: solo explica. */
+  tipo: 'automatico' | 'manual' | 'info'
+  tweakId?: TweakId
+  pasos?: string[]
+  /** Ya está resuelto en este equipo (por ejemplo, el ajuste ya está activo). */
+  hecho: boolean
+  /** De dónde sale la recomendación (investigación hecha al desarrollar; la app es offline). */
+  fuente: string | null
+}
+
+export interface ComponentSummary {
+  componente: ProfileComponent
+  /** Una línea con el componente detectado, p. ej. "Intel Core i7-9700F · 8 núcleos". */
+  resumen: string
+}
+
+export interface EquipmentProfile {
+  componentes: ComponentSummary[]
+  recomendaciones: ProfileRecommendation[]
 }
 
 // ---------- Modo Juego ----------
@@ -294,62 +333,6 @@ export interface GameModeStatus {
   juego: ActiveGame | null
   sesiones: GameSession[]
   conflictos: GameConflict[]
-}
-
-// ---------- Análisis con IA ----------
-
-export const AI_PROFILES = ['entrada', 'media', 'alta', 'entusiasta'] as const
-export type AiProfile = (typeof AI_PROFILES)[number]
-
-export const MANUAL_CATEGORIES = ['bios', 'drivers', 'panel_gpu', 'juego', 'hardware', 'windows'] as const
-export type ManualCategory = (typeof MANUAL_CATEGORIES)[number]
-
-export interface AiManual {
-  titulo: string
-  detalle: string
-  categoria: ManualCategory
-  impacto: 'alto' | 'medio' | 'bajo'
-}
-
-/** Lo que devuelve el paso de estructuración; los IDs ya vienen filtrados contra el catálogo. */
-export interface AiRecommendation {
-  resumen: string
-  perfil: AiProfile
-  ajustes: TweakRecommendation[]
-  manuales: AiManual[]
-  ram: { autoLimpieza: boolean; umbralStandbyMB: number; umbralLibreMB: number }
-  advertencias: string[]
-}
-
-export interface AiSource {
-  url: string
-  title: string
-}
-
-export interface AiAnalysis {
-  createdAt: string
-  /** Modelo que respondió (puede ser el de respaldo si el principal declinó). */
-  model: string
-  recomendacion: AiRecommendation
-  /** Sacadas de los resultados de búsqueda, no del texto del modelo. */
-  fuentes: AiSource[]
-  busquedas: string[]
-  /** Estimación con los precios de Claude Opus 5.5. */
-  costoUSD: number
-  /** Quién hizo el análisis (los guardados antes de añadir Gemini no lo traen: eran de Claude). */
-  proveedor?: AiProvider
-  /** IDs que el modelo propuso y no están en el catálogo (se descartaron). */
-  descartados: string[]
-}
-
-export type AiProgress =
-  | { kind: 'fase'; fase: 'investigando' | 'estructurando'; text: string }
-  | { kind: 'busqueda'; query: string }
-  | { kind: 'fuente'; source: AiSource }
-
-export interface AiKeyTest {
-  ok: boolean
-  error: string | null
 }
 
 export interface RestorePointInfo {
@@ -395,13 +378,9 @@ export interface OptikaxApi {
     /** Llega con cada limpieza, manual o automática. */
     onEvent(cb: (e: MemoryEvent) => void): () => void
   }
-  apiKey: {
-    /** Nunca devuelve la clave: solo si hay una guardada para ese proveedor. */
-    has(provider: AiProvider): Promise<boolean>
-    set(provider: AiProvider, key: string): Promise<void>
-    clear(provider: AiProvider): Promise<void>
-    /** Comprueba la clave guardada contra la API del proveedor (sin coste: no genera tokens). */
-    test(provider: AiProvider): Promise<AiKeyTest>
+  profile: {
+    /** Recomendaciones por componente; con force vuelve a escanear hardware y discos. */
+    get(force?: boolean): Promise<EquipmentProfile>
   }
   backup: {
     /** Guarda una copia de los valores originales; null si el usuario cancela. */
@@ -411,13 +390,6 @@ export interface OptikaxApi {
     status(): Promise<GameModeStatus>
     /** Llega al detectar un juego, al cerrarlo y al cambiar los ajustes del modo. */
     onChange(cb: (s: GameModeStatus) => void): () => void
-  }
-  ai: {
-    /** Último análisis guardado en disco, o null. */
-    last(): Promise<AiAnalysis | null>
-    analyze(): Promise<AiAnalysis>
-    cancel(): Promise<void>
-    onProgress(cb: (p: AiProgress) => void): () => void
   }
 }
 
@@ -442,15 +414,8 @@ export const IPC = {
   memoryPurge: 'memory:purge',
   memoryState: 'memory:state',
   memoryEvent: 'memory:event',
-  apiKeyHas: 'apikey:has',
-  apiKeySet: 'apikey:set',
-  apiKeyClear: 'apikey:clear',
-  apiKeyTest: 'apikey:test',
-  aiLast: 'ai:last',
-  aiAnalyze: 'ai:analyze',
-  aiCancel: 'ai:cancel',
-  aiProgress: 'ai:progress',
   backupExport: 'backup:export',
   gameModeStatus: 'gamemode:status',
+  profileGet: 'profile:get',
   gameModeChange: 'gamemode:change'
 } as const

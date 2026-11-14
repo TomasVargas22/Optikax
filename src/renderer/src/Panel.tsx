@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { AiAnalysis, AppInfo, HardwareProfile, MemStats, TweakInfo } from '@shared/types'
+import type { AppInfo, GameModeStatus, HardwareProfile, MemStats, TweakInfo } from '@shared/types'
 import { Core3D, Wave3D } from './effects'
 import type { PageId } from './pages'
+import { TuEquipo } from './TuEquipo'
 
 const gb = (bytes: number): number => Math.round(bytes / 2 ** 30)
 
@@ -43,18 +44,16 @@ interface Props {
   rescanning: boolean
   mem: MemStats | null
   info: AppInfo | null
-  hasKey: boolean | null
+  game: GameModeStatus | null
   onNavigate: (page: PageId) => void
 }
 
-export function Panel({ hw, hwError, onRescan, rescanning, mem, info, hasKey, onNavigate }: Props) {
+export function Panel({ hw, hwError, onRescan, rescanning, mem, info, game, onNavigate }: Props) {
   const [tweaks, setTweaks] = useState<TweakInfo[] | null>(null)
-  const [analysis, setAnalysis] = useState<AiAnalysis | null>(null)
   const [pulse, setPulse] = useState(0)
 
   useEffect(() => {
     window.optikax.tweaks.list().then(setTweaks, () => setTweaks([]))
-    void window.optikax.ai.last().then(setAnalysis)
     // Cada limpieza de memoria hace que el núcleo se disperse y se vuelva a juntar.
     return window.optikax.memory.onEvent((e) => e.freedBytes > 0 && setPulse((n) => n + 1))
   }, [])
@@ -76,7 +75,7 @@ export function Panel({ hw, hwError, onRescan, rescanning, mem, info, hasKey, on
             juega
           </h1>
           <p className="lede">
-            Tu hardware, comparado con lo que recomiendan los foros, y ajustado solo con cambios seguros y reversibles.
+            Detecta tu hardware, lo ajusta solo con cambios seguros y reversibles, y prepara el equipo cada vez que abres un juego.
           </p>
 
           {hw && (
@@ -125,16 +124,16 @@ export function Panel({ hw, hwError, onRescan, rescanning, mem, info, hasKey, on
           </li>
           <li className="step">
             <span className="step-num num">02</span>
-            <h2>Analizar</h2>
+            <h2>Jugar</h2>
             <p>
-              {analysis
-                ? `${analysis.recomendacion.ajustes.filter((a) => a.aplicar).length} recomendaciones · ${ago(analysis.createdAt)}`
-                : hasKey === false
-                  ? 'Necesita una API key de Anthropic'
-                  : 'Aún sin análisis de tu equipo'}
+              {game?.juego
+                ? `Jugando ${game.juego.name}`
+                : game?.activo
+                  ? `Modo Juego vigilando · ${game.sesiones.length} sesion${game.sesiones.length === 1 ? '' : 'es'}`
+                  : 'Modo Juego apagado'}
             </p>
-            <button type="button" className="pill" onClick={() => onNavigate(analysis || hasKey !== false ? 'ia' : 'ajustes')}>
-              {analysis ? 'Ver análisis' : hasKey === false ? 'Configurar' : 'Analizar'}
+            <button type="button" className="pill" onClick={() => onNavigate('juego')}>
+              Ver Modo Juego
             </button>
           </li>
           <li className="step" data-primary="">
@@ -148,29 +147,14 @@ export function Panel({ hw, hwError, onRescan, rescanning, mem, info, hasKey, on
         </ol>
       </section>
 
-      {hw && hw.issues.length > 0 && (
-        <section className="block">
-          <p className="eyebrow">
-            {hw.issues.length} problema{hw.issues.length > 1 ? 's' : ''} detectado{hw.issues.length > 1 ? 's' : ''}
-          </p>
-          <ul className="issues">
-            {hw.issues.map((issue) => (
-              <li key={issue.id} className="issue" data-severity={issue.severidad}>
-                <span className="issue-tag">Prioridad {issue.severidad}</span>
-                <h3>{issue.titulo}</h3>
-                <p>{issue.detalle}</p>
-                <p className="issue-action">{issue.accion}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* Los problemas detectados forman parte de las recomendaciones por componente. */}
+      {hw && <TuEquipo key={hw.scannedAt} />}
 
       <ul className="guarantees">
         <li>Sin tocar servicios</li>
         <li>Todo reversible</li>
         <li>Punto de restauración</li>
-        <li>Offline · IA opcional</li>
+        <li>100 % offline</li>
         {info && !info.elevado && <li data-warn="">Sin permisos de administrador</li>}
       </ul>
     </>

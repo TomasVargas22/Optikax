@@ -107,18 +107,22 @@ function createWindow(): void {
 // Verificación de los ajustes (npm run verify:tweaks): solo en desarrollo, sin ventana
 // y con un backup.json temporal para no tocar el del usuario.
 const verifyMode = app.isPackaged ? null : (process.env['OPTIKAX_VERIFY'] ?? null)
+// npm run capture: carpeta de datos propia ANTES del bloqueo de instancia única (que vive en esa
+// carpeta), para poder capturar aunque la app instalada esté abierta.
+const capture = !app.isPackaged && process.env['OPTIKAX_CAPTURE'] === '1'
+if (capture) app.setPath('userData', join(app.getPath('temp'), 'optikax-capture'))
 
-if (verifyMode === '1' || verifyMode === 'ai' || verifyMode === 'game') {
+if (verifyMode === '1' || verifyMode === 'game' || verifyMode === 'perfil') {
   app.setPath('userData', join(app.getPath('temp'), 'optikax-verify'))
   void app.whenReady().then(async () => {
     let code = 1
     try {
-      if (verifyMode === 'game') {
+      if (verifyMode === 'perfil') {
+        const { runProfileVerification } = await import('./verify-profile')
+        code = await runProfileVerification()
+      } else if (verifyMode === 'game') {
         const { runGameVerification } = await import('./verify-game')
         code = await runGameVerification()
-      } else if (verifyMode === 'ai') {
-        const { runAiVerification } = await import('./verify-ai')
-        code = await runAiVerification()
       } else {
         const { runVerification } = await import('./verify')
         code = await runVerification()
@@ -134,9 +138,7 @@ if (verifyMode === '1' || verifyMode === 'ai' || verifyMode === 'game') {
 } else {
   app.on('second-instance', showWindow)
 
-  const capture = !app.isPackaged && process.env['OPTIKAX_CAPTURE'] === '1'
   if (capture) {
-    app.setPath('userData', join(app.getPath('temp'), 'optikax-capture'))
     // Si otra ventana la tapa, Chromium deja de pintar y la captura saldría con un fotograma viejo.
     app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
     app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')

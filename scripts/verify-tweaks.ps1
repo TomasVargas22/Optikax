@@ -23,7 +23,8 @@ $keys = @(
     'HKCU\Software\Microsoft\DirectX\UserGpuPreferences',
     'HKCU\Control Panel\Mouse',
     'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize',
-    'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling'
+    'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling',
+    'HKLM\SYSTEM\CurrentControlSet\Control\FileSystem'
 )
 $tcpip = 'HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces'
 

@@ -82,9 +82,12 @@ const EXCLUDED_NAMES = new Set([
   'dxsetup',
   'dxwebsetup'
 ])
-const EXCLUDED_PATTERNS = [/crash/i, /setup/i, /install/i, /redist/i, /launcher/i, /updater/i, /helper/i, /anticheat/i, /^unins/i]
-/** Carpetas de Steam que tampoco son juegos. */
-const EXCLUDED_FOLDERS = ['\\steamworks shared\\', '\\wallpaper_engine\\', '\\steamvr\\', '\\_commonredist\\']
+const EXCLUDED_PATTERNS = [/crash/i, /setup/i, /install/i, /redist/i, /launcher/i, /updater/i, /helper/i, /anticheat/i, /overlay/i, /^unins/i]
+/**
+ * Carpetas que no son de juegos: herramientas de Steam y el propio lanzador de Epic
+ * (su overlay EOSOverlayRenderer vive en "Epic Games\Launcher" y se colaba como juego).
+ */
+const EXCLUDED_FOLDERS = ['\\steamworks shared\\', '\\wallpaper_engine\\', '\\steamvr\\', '\\_commonredist\\', '\\epic games\\launcher\\']
 
 const baseName = (name: string): string => name.toLowerCase().replace(/\.exe$/, '')
 

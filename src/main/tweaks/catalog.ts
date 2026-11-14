@@ -152,6 +152,8 @@ const MOUSE = 'HKCU\\Control Panel\\Mouse'
 const PERSONALIZE = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'
 const POWER_THROTTLING = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerThrottling'
 const TCPIP_INTERFACES = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces'
+// Donde fsutil guarda "DisableDeleteNotify" de NTFS (0 = TRIM activo). Comprobado con fsutil en Windows 11.
+const FILESYSTEM = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem'
 
 const { ULTIMATE, HIGH_PERFORMANCE, BALANCED } = POWER_PLANS
 
@@ -435,7 +437,22 @@ export const CATALOG: Tweak[] = [
     }
   ),
 
-  memoryCompressionOff
+  memoryCompressionOff,
+
+  regTweak(
+    {
+      id: 'trim_on',
+      titulo: 'TRIM activo en los SSD',
+      descripcion:
+        'Windows avisa al SSD de los bloques que ya no se usan, para que mantenga su velocidad de escritura. Viene activo de fábrica; algunos "optimizadores" lo apagan.',
+      categoria: 'almacenamiento',
+      riesgo: 'bajo',
+      reinicio: 'no',
+      motivoNoAplica: (ctx) => (ctx.hw.disks.some((d) => d.mediaType === 'SSD') ? null : 'No hay ningún SSD en este equipo.')
+    },
+    // Sin valor, Windows usa el predeterminado: TRIM activo.
+    [dword(FILESYSTEM, 'DisableDeleteNotification', 0, 0)]
+  )
 ]
 
 export const TWEAKS = new Map<TweakId, Tweak>(CATALOG.map((t) => [t.id, t]))

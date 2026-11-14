@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppInfo, GameModeStatus, HardwareProfile, MemStats, ScanProgress, Settings, WindowState } from '@shared/types'
 import { Ajustes } from './Ajustes'
-import { Analisis } from './Analisis'
 import { EffectsContext, useReducedMotion } from './effects'
 import { errorMessage } from './errors'
 import { Loader } from './Loader'
@@ -15,8 +14,6 @@ export function App() {
   const [pageId, setPageId] = useState<PageId>('panel')
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [hasKey, setHasKey] = useState<boolean | null>(null)
-  const [keyTick, setKeyTick] = useState(0)
   const [windowState, setWindowState] = useState<WindowState>('visible')
   const [mem, setMem] = useState<MemStats | null>(null)
   const [game, setGame] = useState<GameModeStatus | null>(null)
@@ -56,12 +53,6 @@ export function App() {
       offWindow()
     }
   }, [runScan])
-
-  // ¿Hay clave para el proveedor de IA elegido? Se vuelve a mirar al cambiar de proveedor o de clave.
-  const provider = settings?.ia.proveedor ?? 'anthropic'
-  useEffect(() => {
-    void window.optikax.apiKey.has(provider).then(setHasKey)
-  }, [provider, keyTick])
 
   // Con un juego abierto la app se queda quieta: sin animaciones, 3D ni sondeos de la interfaz.
   const playing = game?.juego != null
@@ -138,7 +129,7 @@ export function App() {
               rescanning={scanning && loaded}
               mem={mem}
               info={info}
-              hasKey={hasKey}
+              game={game}
               onNavigate={setPageId}
             />
           ) : page.id === 'memoria' ? (
@@ -152,13 +143,11 @@ export function App() {
           )}
 
           {page.id === 'optimizar' && <Optimizar />}
-          {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} hasKey={hasKey} provider={provider} />}
           {page.id === 'juego' && <ModoJuego status={game} settings={settings} />}
           {page.id === 'ajustes' && (
             <Ajustes
               settings={settings}
               onSettings={setSettings}
-              onKeyChange={() => setKeyTick((n) => n + 1)}
               onOpenGameMode={() => setPageId('juego')}
               onOpenMemory={() => setPageId('memoria')}
             />

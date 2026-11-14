@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
   IPC,
-  type AiProgress,
   type GameModeStatus,
   type MemoryEvent,
   type OptikaxApi,
@@ -52,11 +51,8 @@ const api: OptikaxApi = {
       return () => ipcRenderer.removeListener(IPC.memoryEvent, listener)
     }
   },
-  apiKey: {
-    has: (provider) => ipcRenderer.invoke(IPC.apiKeyHas, provider),
-    set: (provider, key) => ipcRenderer.invoke(IPC.apiKeySet, provider, key),
-    clear: (provider) => ipcRenderer.invoke(IPC.apiKeyClear, provider),
-    test: (provider) => ipcRenderer.invoke(IPC.apiKeyTest, provider)
+  profile: {
+    get: (force) => ipcRenderer.invoke(IPC.profileGet, force === true)
   },
   backup: {
     export: () => ipcRenderer.invoke(IPC.backupExport)
@@ -67,16 +63,6 @@ const api: OptikaxApi = {
       const listener = (_e: IpcRendererEvent, s: GameModeStatus): void => cb(s)
       ipcRenderer.on(IPC.gameModeChange, listener)
       return () => ipcRenderer.removeListener(IPC.gameModeChange, listener)
-    }
-  },
-  ai: {
-    last: () => ipcRenderer.invoke(IPC.aiLast),
-    analyze: () => ipcRenderer.invoke(IPC.aiAnalyze),
-    cancel: () => ipcRenderer.invoke(IPC.aiCancel),
-    onProgress: (cb) => {
-      const listener = (_e: IpcRendererEvent, p: AiProgress): void => cb(p)
-      ipcRenderer.on(IPC.aiProgress, listener)
-      return () => ipcRenderer.removeListener(IPC.aiProgress, listener)
     }
   }
 }

@@ -11,8 +11,8 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "verify:tweaks": "electron-vite build && set OPTIKAX_VERIFY=1&& electron .",
-    "verify:ai": "electron-vite build && set OPTIKAX_VERIFY=ai&& electron .",
     "verify:game": "electron-vite build && set OPTIKAX_VERIFY=game&& electron .",
+    "verify:perfil": "electron-vite build && set OPTIKAX_VERIFY=perfil&& electron .",
     "capture": "electron-vite build && set OPTIKAX_CAPTURE=1&& electron .",
     "dist": "electron-vite build && electron-builder --win"
   },
@@ -46,11 +46,6 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
-    "@google/genai": "^3.3.0",
-    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@fontsource-variable/inter-tight": "^5.3.0",

@@ -6,36 +6,20 @@
  */
 import { app, type BrowserWindow } from 'electron'
 import { execFile } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { IPC, type AiAnalysis } from '@shared/types'
-import { finalizeRecommendation } from './ai-schema'
+import { IPC } from '@shared/types'
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 /**
  * Datos de la captura en una carpeta temporal (no toca los del usuario): efectos 3D en "Siempre"
- * para ver el 3D aunque Windows tenga el movimiento reducido, y un análisis de ejemplo para el carrusel.
+ * para ver el 3D aunque Windows tenga el movimiento reducido.
  */
 export function seedCapture(): void {
   const dir = app.getPath('userData')
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, 'settings.json'), JSON.stringify({ efectos3d: 'siempre' }))
-  const raw = JSON.parse(readFileSync(join(app.getAppPath(), 'fixtures', 'recomendacion-ejemplo.json'), 'utf8')) as unknown
-  const { recomendacion, descartados } = finalizeRecommendation(raw, 16 * 1024)
-  const analysis: AiAnalysis = {
-    createdAt: new Date().toISOString(),
-    model: 'claude-opus-5-5',
-    recomendacion,
-    fuentes: [
-      { url: 'https://www.reddit.com/r/nvidia/', title: 'Ejemplo: HAGS en la serie RTX 40' },
-      { url: 'https://forums.blurbusters.com/', title: 'Ejemplo: latencia y límites de FPS' }
-    ],
-    busquedas: ['RTX 4060 HAGS reddit', 'i7-9700F power plan gaming'],
-    costoUSD: 0,
-    descartados
-  }
-  writeFileSync(join(dir, 'analysis.json'), JSON.stringify(analysis))
 }
 
 /** Uso medio de GPU (%) de todos los procesos de Electron durante `seconds` segundos. */
@@ -96,9 +80,8 @@ export async function runCapture(win: BrowserWindow): Promise<void> {
     ['Panel', '01-panel'],
     ['Optimizar', '02-optimizar'],
     ['Memoria', '03-memoria'],
-    ['Análisis IA', '04-analisis'],
-    ['Modo Juego', '05-modo-juego'],
-    ['Ajustes', '06-ajustes']
+    ['Modo Juego', '04-modo-juego'],
+    ['Ajustes', '05-ajustes']
   ]
   for (const [label, file] of pages) {
     await click(win, label)
@@ -108,20 +91,23 @@ export async function runCapture(win: BrowserWindow): Promise<void> {
     say(`captura ${file}.png`)
   }
 
-  // Análisis IA desplazado hasta el carrusel, y avanzado a la segunda recomendación.
-  await click(win, 'Análisis IA')
-  await sleep(1500)
-  await win.webContents.executeJavaScript(`document.querySelector('.carousel')?.scrollIntoView({ block: 'center' })`)
-  await win.webContents.executeJavaScript(`document.querySelector('.carousel-arrows button:last-child')?.click()`)
-  await sleep(1200)
-  writeFileSync(join(dir, '04b-analisis-carrusel.png'), (await win.webContents.capturePage()).toPNG())
-
   // Panel desplazado hasta los pasos 01/02/03 sobre la ola.
   await click(win, 'Panel')
   await sleep(1200)
   await win.webContents.executeJavaScript(`document.querySelector('.page').scrollTo(0, 520)`)
   await sleep(1200)
   writeFileSync(join(dir, '01b-panel-pasos.png'), (await win.webContents.capturePage()).toPNG())
+  // Sección "Tu equipo": se espera a que termine el análisis de discos.
+  for (let i = 0; i < 40; i++) {
+    if (await win.webContents.executeJavaScript(`!!document.querySelector('.equipo-grid')`)) break
+    await sleep(500)
+  }
+  await win.webContents.executeJavaScript(`document.querySelector('.equipo')?.scrollIntoView({ block: 'start' })`)
+  await sleep(1200)
+  writeFileSync(join(dir, '01c-tu-equipo.png'), (await win.webContents.capturePage()).toPNG())
+  await win.webContents.executeJavaScript(`document.querySelector('.page').scrollBy(0, 700)`)
+  await sleep(800)
+  writeFileSync(join(dir, '01d-tu-equipo-2.png'), (await win.webContents.capturePage()).toPNG())
   await win.webContents.executeJavaScript(`document.querySelector('.page').scrollTo(0, 0)`)
 
   // GPU: Panel con el 3D activo, y después con la ventana minimizada.

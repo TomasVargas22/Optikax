@@ -3,23 +3,14 @@ import { execFile } from 'node:child_process'
 import { copyFileSync, existsSync } from 'node:fs'
 import { setAutostart } from './autostart'
 import { backup } from './tweaks/backup'
-import {
-  AI_PROVIDERS,
-  IPC,
-  type AiProvider,
-  type AppInfo,
-  type DeepPartial,
-  type PurgeKind,
-  type Settings,
-  type TitleBarTheme
-} from '@shared/types'
-import { analyze, cancelAnalysis, lastAnalysis, testApiKey } from './ai'
+import { IPC, type AppInfo, type DeepPartial, type PurgeKind, type Settings, type TitleBarTheme } from '@shared/types'
 import { gameModeStatus, syncGameMode } from './gamemode'
+import { equipmentProfile } from './storage'
 import { getHardware } from './hardware'
 import { memoryState, onMemoryEvent, purge, PURGE_KINDS, syncAutoClean } from './memory'
 import { native } from './native'
 import { applyTweaks, listTweaks, revertTweaks, sanitizeIds } from './tweaks'
-import { clearApiKey, getSettings, hasApiKey, onSettingsChange, setApiKey, updateSettings } from './store'
+import { getSettings, onSettingsChange, updateSettings } from './store'
 
 export const TITLEBAR = {
   oscuro: { color: '#010101', symbolColor: '#F4F4F6' },
@@ -27,11 +18,6 @@ export const TITLEBAR = {
 } as const
 
 export const TITLEBAR_HEIGHT = 56
-
-function provider(p: unknown): AiProvider {
-  if (!AI_PROVIDERS.includes(p as AiProvider)) throw new Error('Proveedor de IA no válido.')
-  return p as AiProvider
-}
 
 /** `net session` solo termina bien en un proceso elevado. */
 function isElevated(): Promise<boolean> {
@@ -60,7 +46,6 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     if (win && !win.isDestroyed()) win.webContents.send(IPC.settingsChanged, s)
   })
   ipcMain.handle(IPC.settingsUpdate, async (_e, patch: DeepPartial<Settings>) => {
-    if (patch?.ia?.proveedor !== undefined) provider(patch.ia.proveedor)
     const before = getSettings().iniciarConWindows
     const next = updateSettings(patch)
     if (next.iniciarConWindows !== before) {
@@ -88,6 +73,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   })
 
   ipcMain.handle(IPC.gameModeStatus, () => gameModeStatus())
+  ipcMain.handle(IPC.profileGet, (_e, force: unknown) => equipmentProfile(force === true))
 
   ipcMain.handle(IPC.hardwareScan, (_e, force: unknown) =>
     getHardware(force === true, (p) => {
@@ -114,22 +100,4 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     if (win && !win.isDestroyed()) win.webContents.send(IPC.memoryEvent, event)
   })
   syncAutoClean()
-
-  // El renderer solo puede nombrar proveedores de la lista; cualquier otro valor se rechaza.
-  ipcMain.handle(IPC.apiKeyHas, (_e, p: unknown) => hasApiKey(provider(p)))
-  ipcMain.handle(IPC.apiKeySet, (_e, p: unknown, key: unknown) => {
-    if (typeof key !== 'string') throw new Error('API key inválida.')
-    setApiKey(provider(p), key)
-  })
-  ipcMain.handle(IPC.apiKeyClear, (_e, p: unknown) => clearApiKey(provider(p)))
-  ipcMain.handle(IPC.apiKeyTest, (_e, p: unknown) => testApiKey(provider(p)))
-
-  ipcMain.handle(IPC.aiLast, () => lastAnalysis())
-  ipcMain.handle(IPC.aiAnalyze, () =>
-    analyze((p) => {
-      const win = getWindow()
-      if (win && !win.isDestroyed()) win.webContents.send(IPC.aiProgress, p)
-    })
-  )
-  ipcMain.handle(IPC.aiCancel, () => cancelAnalysis())
 }
