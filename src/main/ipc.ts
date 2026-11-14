@@ -4,7 +4,9 @@ import { copyFileSync, existsSync } from 'node:fs'
 import { setAutostart } from './autostart'
 import { backup } from './tweaks/backup'
 import {
+  AI_PROVIDERS,
   IPC,
+  type AiProvider,
   type AppInfo,
   type DeepPartial,
   type PurgeKind,
@@ -25,6 +27,11 @@ export const TITLEBAR = {
 } as const
 
 export const TITLEBAR_HEIGHT = 56
+
+function provider(p: unknown): AiProvider {
+  if (!AI_PROVIDERS.includes(p as AiProvider)) throw new Error('Proveedor de IA no válido.')
+  return p as AiProvider
+}
 
 /** `net session` solo termina bien en un proceso elevado. */
 function isElevated(): Promise<boolean> {
@@ -53,6 +60,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     if (win && !win.isDestroyed()) win.webContents.send(IPC.settingsChanged, s)
   })
   ipcMain.handle(IPC.settingsUpdate, async (_e, patch: DeepPartial<Settings>) => {
+    if (patch?.ia?.proveedor !== undefined) provider(patch.ia.proveedor)
     const before = getSettings().iniciarConWindows
     const next = updateSettings(patch)
     if (next.iniciarConWindows !== before) {
@@ -107,13 +115,14 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   })
   syncAutoClean()
 
-  ipcMain.handle(IPC.apiKeyHas, () => hasApiKey())
-  ipcMain.handle(IPC.apiKeySet, (_e, key: unknown) => {
+  // El renderer solo puede nombrar proveedores de la lista; cualquier otro valor se rechaza.
+  ipcMain.handle(IPC.apiKeyHas, (_e, p: unknown) => hasApiKey(provider(p)))
+  ipcMain.handle(IPC.apiKeySet, (_e, p: unknown, key: unknown) => {
     if (typeof key !== 'string') throw new Error('API key inválida.')
-    setApiKey(key)
+    setApiKey(provider(p), key)
   })
-  ipcMain.handle(IPC.apiKeyClear, () => clearApiKey())
-  ipcMain.handle(IPC.apiKeyTest, () => testApiKey())
+  ipcMain.handle(IPC.apiKeyClear, (_e, p: unknown) => clearApiKey(provider(p)))
+  ipcMain.handle(IPC.apiKeyTest, (_e, p: unknown) => testApiKey(provider(p)))
 
   ipcMain.handle(IPC.aiLast, () => lastAnalysis())
   ipcMain.handle(IPC.aiAnalyze, () =>

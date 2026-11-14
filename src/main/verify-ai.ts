@@ -10,8 +10,9 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { app } from 'electron'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { recommendedTweaks } from '@shared/types'
+import { AI_PROVIDERS, recommendedTweaks } from '@shared/types'
 import { testApiKey } from './ai'
+import { geminiEngine, jsonSchema as geminiJsonSchema } from './ai-gemini'
 import { estimateCost, finalizeRecommendation, RecomendacionSchema } from './ai-schema'
 import { hasApiKey } from './store'
 import { listTweaks } from './tweaks'
@@ -67,21 +68,36 @@ export async function runAiVerification(): Promise<number> {
   const cost = estimateCost({ input: 20_000, output: 8_000, cacheWrite: 0, cacheRead: 0, searches: 10 })
   check('estimación de coste', Math.abs(cost - 0.34) < 0.001, `$${cost.toFixed(3)}`)
 
-  // 5. Errores: sin clave, y con una clave inválida.
-  if (!hasApiKey()) {
-    const none = await testApiKey()
-    check('sin clave pide configurarla', !none.ok && /Ajustes/.test(none.error ?? ''), none.error ?? '')
+  // 5. Errores: sin clave, y con una clave inválida (peticiones sin coste a cada API).
+  for (const p of AI_PROVIDERS) {
+    if (!hasApiKey(p)) {
+      const none = await testApiKey(p)
+      check(`${p}: sin clave pide configurarla`, !none.ok && /Ajustes/.test(none.error ?? ''), none.error ?? '')
+    }
   }
   try {
     await new Anthropic({ apiKey: 'sk-ant-clave-invalida-de-prueba', maxRetries: 0 }).models.retrieve('claude-opus-5-5')
-    check('una clave inválida da AuthenticationError', false, 'la API aceptó la clave')
+    check('anthropic: una clave inválida da AuthenticationError', false, 'la API aceptó la clave')
   } catch (err) {
     check(
-      'una clave inválida da AuthenticationError',
+      'anthropic: una clave inválida da AuthenticationError',
       err instanceof Anthropic.AuthenticationError,
       err instanceof Error ? err.constructor.name : String(err)
     )
   }
+  const gemini = geminiEngine('clave-gemini-invalida-de-prueba')
+  try {
+    await gemini.test()
+    check('gemini: una clave inválida se rechaza', false, 'la API aceptó la clave')
+  } catch (err) {
+    const msg = gemini.friendly(err).message
+    check('gemini: una clave inválida se rechaza con un mensaje claro', /no es válida|no tiene acceso/.test(msg), msg)
+  }
+
+  // 6. Gemini: el esquema de Optikax convertido a JSON Schema para response_format.
+  const schema = geminiJsonSchema() as { type?: string; properties?: Record<string, unknown>; $schema?: string }
+  const gProps = Object.keys(schema.properties ?? {})
+  check('gemini: JSON Schema con las 6 propiedades y sin $schema', schema.type === 'object' && gProps.length === 6 && !schema.$schema, gProps.join(', '))
 
   return results.every((x) => x.ok) ? 0 : 1
 }

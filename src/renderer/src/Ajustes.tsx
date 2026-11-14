@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Effects3D, Settings } from '@shared/types'
+import { AI_PROVIDER_LABEL, AI_PROVIDERS, type AiProvider, type Effects3D, type Settings } from '@shared/types'
 import { errorMessage } from './errors'
 
 type Status = { kind: 'ok' | 'error'; text: string } | null
@@ -10,20 +10,27 @@ const EFFECTS: { value: Effects3D; label: string; note: string }[] = [
   { value: 'nunca', label: 'Nunca', note: 'Imágenes fijas en lugar de 3D. Cero uso de GPU.' }
 ]
 
-function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
-  const [hasKey, setHasKey] = useState<boolean | null>(null)
+const PROVIDER_INFO: Record<AiProvider, { where: string; placeholder: string }> = {
+  anthropic: { where: 'console.anthropic.com', placeholder: 'sk-ant-…' },
+  gemini: { where: 'aistudio.google.com', placeholder: 'Clave de Google AI Studio' }
+}
+
+function ApiKey({ provider, onProvider, onKeyChange }: { provider: AiProvider; onProvider: (p: AiProvider) => void; onKeyChange: () => void }) {
+  const [hasKey, setHasKey] = useState<Record<AiProvider, boolean | null>>({ anthropic: null, gemini: null })
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<Status>(null)
 
   useEffect(() => {
-    void window.optikax.apiKey.has().then(setHasKey)
+    for (const p of AI_PROVIDERS) void window.optikax.apiKey.has(p).then((has) => setHasKey((h) => ({ ...h, [p]: has })))
   }, [])
 
   const update = (has: boolean): void => {
-    setHasKey(has)
-    onKeyChange(has)
+    setHasKey((h) => ({ ...h, [provider]: has }))
+    onKeyChange()
   }
+  const current = hasKey[provider]
+  const label = AI_PROVIDER_LABEL[provider]
 
   const run = (task: () => Promise<Status>): void => {
     setBusy(true)
@@ -35,7 +42,7 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
   }
 
   const testResult = async (okText: string): Promise<Status> => {
-    const r = await window.optikax.apiKey.test()
+    const r = await window.optikax.apiKey.test(provider)
     return r.ok ? { kind: 'ok', text: okText } : { kind: 'error', text: r.error ?? 'Error' }
   }
 
@@ -43,15 +50,33 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
     <section className="setting">
       <div className="setting-head">
         <div>
-          <h2>API key de Anthropic</h2>
+          <h2>Análisis con IA</h2>
           <p>
-            Para el análisis con IA. Se guarda cifrada por Windows en este equipo y solo la usa el proceso principal. Consíguela en
-            console.anthropic.com.
+            Elige el proveedor y guarda su API key. Se guarda cifrada por Windows en este equipo y solo la usa el proceso principal.
+            Consíguela en {PROVIDER_INFO[provider].where}.
           </p>
         </div>
-        <span className="setting-state" data-on={hasKey || undefined}>
-          {hasKey === null ? '…' : hasKey ? 'Guardada' : 'Sin configurar'}
+        <span className="setting-state" data-on={current || undefined}>
+          {current === null ? '…' : current ? 'Clave guardada' : 'Sin clave'}
         </span>
+      </div>
+      <div className="segmented" role="group" aria-label="Proveedor de IA">
+        {AI_PROVIDERS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={provider === p}
+            disabled={busy}
+            onClick={() => {
+              setStatus(null)
+              setDraft('')
+              onProvider(p)
+            }}
+          >
+            {AI_PROVIDER_LABEL[p]}
+            {hasKey[p] ? ' ✓' : ''}
+          </button>
+        ))}
       </div>
       <form
         className="key-form"
@@ -59,7 +84,7 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
           e.preventDefault()
           if (!draft.trim()) return
           run(async () => {
-            await window.optikax.apiKey.set(draft)
+            await window.optikax.apiKey.set(provider, draft)
             setDraft('')
             update(true)
             return testResult('Clave guardada y conexión correcta.')
@@ -67,14 +92,14 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
         }}
       >
         <label htmlFor="api-key" className="sr-only">
-          {hasKey ? 'Reemplazar clave' : 'Pegar clave'}
+          {current ? `Reemplazar la clave de ${label}` : `Pegar la clave de ${label}`}
         </label>
         <input
           id="api-key"
           type="password"
           autoComplete="off"
           spellCheck={false}
-          placeholder={hasKey ? 'Pegar una clave nueva para reemplazarla' : 'sk-ant-…'}
+          placeholder={current ? 'Pegar una clave nueva para reemplazarla' : PROVIDER_INFO[provider].placeholder}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
@@ -82,7 +107,7 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
           {busy ? 'Comprobando…' : 'Guardar'}
         </button>
       </form>
-      {hasKey && (
+      {current && (
         <div className="setting-actions">
           <button type="button" className="pill" disabled={busy} onClick={() => run(() => testResult('Conexión correcta.'))}>
             Probar conexión
@@ -93,7 +118,7 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
             disabled={busy}
             onClick={() =>
               run(async () => {
-                await window.optikax.apiKey.clear()
+                await window.optikax.apiKey.clear(provider)
                 update(false)
                 return { kind: 'ok', text: 'Clave borrada.' }
               })
@@ -111,7 +136,7 @@ function ApiKey({ onKeyChange }: { onKeyChange: (has: boolean) => void }) {
 interface Props {
   settings: Settings | null
   onSettings: (s: Settings) => void
-  onKeyChange: (has: boolean) => void
+  onKeyChange: () => void
   onOpenGameMode: () => void
   onOpenMemory: () => void
 }
@@ -139,7 +164,11 @@ export function Ajustes({ settings, onSettings, onKeyChange, onOpenGameMode, onO
 
   return (
     <div className="settings">
-      <ApiKey onKeyChange={onKeyChange} />
+      <ApiKey
+        provider={settings?.ia.proveedor ?? 'anthropic'}
+        onProvider={(proveedor) => save({ ia: { proveedor } })}
+        onKeyChange={onKeyChange}
+      />
 
       <section className="setting">
         <div className="setting-head">

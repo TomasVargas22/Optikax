@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
-import { recommendedTweaks, type AiAnalysis, type AiProgress, type ManualCategory, type TweakInfo } from '@shared/types'
+import {
+  AI_PROVIDER_LABEL,
+  recommendedTweaks,
+  type AiAnalysis,
+  type AiProgress,
+  type AiProvider,
+  type ManualCategory,
+  type TweakInfo
+} from '@shared/types'
 import { errorMessage } from './errors'
 
 const CATEGORY: Record<ManualCategory, string> = {
@@ -95,8 +103,14 @@ function Carousel({ slides }: { slides: Slide[] }) {
   )
 }
 
-export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
-  const [hasKey, setHasKey] = useState<boolean | null>(null)
+interface Props {
+  onOpenSettings: () => void
+  /** ¿Hay clave para el proveedor elegido en Ajustes? */
+  hasKey: boolean | null
+  provider: AiProvider
+}
+
+export function Analisis({ onOpenSettings, hasKey, provider }: Props) {
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null)
   const [tweaks, setTweaks] = useState<TweakInfo[] | null>(null)
   const [running, setRunning] = useState(false)
@@ -105,7 +119,6 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [applied, setApplied] = useState<string | null>(null)
 
   useEffect(() => {
-    void window.optikax.apiKey.has().then(setHasKey)
     void window.optikax.ai.last().then(setAnalysis)
     window.optikax.tweaks.list().then(setTweaks, () => setTweaks([]))
     return window.optikax.ai.onProgress((p) => setFeed((prev) => [...prev, p]))
@@ -185,12 +198,14 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
             )}
           </div>
         </div>
-        <p className="lede">Usa Claude con búsqueda web. Coste estimado: ≈ $0.10–0.40 por análisis, en tu cuenta de Anthropic.</p>
+        <p className="lede">
+          Usa {AI_PROVIDER_LABEL[provider]} con búsqueda web (se cambia en Ajustes). Coste estimado: ≈ $0.10–0.40 por análisis, en tu cuenta del proveedor.
+        </p>
 
         <div aria-live="polite">
           {hasKey === false && (
             <p className="notice">
-              Para analizar necesitas una API key de Anthropic.{' '}
+              Para analizar con {AI_PROVIDER_LABEL[provider]} necesitas su API key.{' '}
               <button type="button" className="link" onClick={onOpenSettings}>
                 Configurarla en Ajustes
               </button>
@@ -226,7 +241,8 @@ export function Analisis({ onOpenSettings }: { onOpenSettings: () => void }) {
         <>
           <section className="block">
             <p className="eyebrow">
-              {PERFIL[rec.perfil]} · coste ≈ ${analysis.costoUSD.toFixed(2)} · {analysis.busquedas.length} búsquedas
+              {PERFIL[rec.perfil]} · {AI_PROVIDER_LABEL[analysis.proveedor ?? 'anthropic']} · coste ≈ ${analysis.costoUSD.toFixed(2)} ·{' '}
+              {analysis.busquedas.length} búsquedas
             </p>
             <p className="lede">{rec.resumen}</p>
             {rec.advertencias.map((a) => (

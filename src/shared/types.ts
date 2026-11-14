@@ -2,7 +2,13 @@
 
 export type Effects3D = 'auto' | 'siempre' | 'nunca'
 
+/** Proveedor del análisis con IA. Claude es el predeterminado; Gemini es una alternativa. */
+export const AI_PROVIDERS = ['anthropic', 'gemini'] as const
+export type AiProvider = (typeof AI_PROVIDERS)[number]
+export const AI_PROVIDER_LABEL: Record<AiProvider, string> = { anthropic: 'Claude (Anthropic)', gemini: 'Gemini (Google)' }
+
 export interface Settings {
+  ia: { proveedor: AiProvider }
   /** Efectos 3D (three.js): auto los pausa según el estado de la ventana y del juego. */
   efectos3d: Effects3D
   iniciarConWindows: boolean
@@ -21,6 +27,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  ia: { proveedor: 'anthropic' },
   efectos3d: 'auto',
   iniciarConWindows: false,
   ram: { autoLimpieza: false, umbralStandbyMB: 0, umbralLibreMB: 0 },
@@ -329,6 +336,8 @@ export interface AiAnalysis {
   busquedas: string[]
   /** Estimación con los precios de Claude Opus 5.5. */
   costoUSD: number
+  /** Quién hizo el análisis (los guardados antes de añadir Gemini no lo traen: eran de Claude). */
+  proveedor?: AiProvider
   /** IDs que el modelo propuso y no están en el catálogo (se descartaron). */
   descartados: string[]
 }
@@ -387,12 +396,12 @@ export interface OptikaxApi {
     onEvent(cb: (e: MemoryEvent) => void): () => void
   }
   apiKey: {
-    /** Nunca devuelve la clave: solo si hay una guardada. */
-    has(): Promise<boolean>
-    set(key: string): Promise<void>
-    clear(): Promise<void>
-    /** Comprueba la clave guardada contra la API (sin coste: no genera tokens). */
-    test(): Promise<AiKeyTest>
+    /** Nunca devuelve la clave: solo si hay una guardada para ese proveedor. */
+    has(provider: AiProvider): Promise<boolean>
+    set(provider: AiProvider, key: string): Promise<void>
+    clear(provider: AiProvider): Promise<void>
+    /** Comprueba la clave guardada contra la API del proveedor (sin coste: no genera tokens). */
+    test(provider: AiProvider): Promise<AiKeyTest>
   }
   backup: {
     /** Guarda una copia de los valores originales; null si el usuario cancela. */

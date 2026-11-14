@@ -1,7 +1,7 @@
 import { app, safeStorage } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DEFAULT_SETTINGS, type DeepPartial, type Settings } from '@shared/types'
+import { DEFAULT_SETTINGS, type AiProvider, type DeepPartial, type Settings } from '@shared/types'
 
 const dir = (): string => app.getPath('userData')
 const settingsFile = (): string => join(dir(), 'settings.json')
@@ -62,29 +62,32 @@ export function updateSettings(patch: DeepPartial<Settings>): Settings {
   return cache
 }
 
-export function hasApiKey(): boolean {
-  return existsSync(keyFile())
+// Una clave cifrada por proveedor. La de Anthropic conserva su nombre de archivo original.
+const providerKeyFile = (p: AiProvider): string => (p === 'anthropic' ? keyFile() : join(dir(), `apikey-${p}.bin`))
+
+export function hasApiKey(p: AiProvider): boolean {
+  return existsSync(providerKeyFile(p))
 }
 
-export function setApiKey(key: string): void {
+export function setApiKey(p: AiProvider, key: string): void {
   const trimmed = key.trim()
   if (!trimmed) throw new Error('La API key está vacía.')
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error('Windows no permite cifrar la clave en este equipo.')
   }
-  writeAtomic(keyFile(), safeStorage.encryptString(trimmed))
+  writeAtomic(providerKeyFile(p), safeStorage.encryptString(trimmed))
 }
 
 /** Solo para el proceso principal. La clave nunca cruza al renderer. */
-export function readApiKey(): string | null {
+export function readApiKey(p: AiProvider): string | null {
   try {
-    if (!hasApiKey()) return null
-    return safeStorage.decryptString(readFileSync(keyFile()))
+    if (!hasApiKey(p)) return null
+    return safeStorage.decryptString(readFileSync(providerKeyFile(p)))
   } catch {
     return null
   }
 }
 
-export function clearApiKey(): void {
-  rmSync(keyFile(), { force: true })
+export function clearApiKey(p: AiProvider): void {
+  rmSync(providerKeyFile(p), { force: true })
 }

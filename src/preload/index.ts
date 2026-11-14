@@ -53,10 +53,10 @@ const api: OptikaxApi = {
     }
   },
   apiKey: {
-    has: () => ipcRenderer.invoke(IPC.apiKeyHas),
-    set: (key) => ipcRenderer.invoke(IPC.apiKeySet, key),
-    clear: () => ipcRenderer.invoke(IPC.apiKeyClear),
-    test: () => ipcRenderer.invoke(IPC.apiKeyTest)
+    has: (provider) => ipcRenderer.invoke(IPC.apiKeyHas, provider),
+    set: (provider, key) => ipcRenderer.invoke(IPC.apiKeySet, provider, key),
+    clear: (provider) => ipcRenderer.invoke(IPC.apiKeyClear, provider),
+    test: (provider) => ipcRenderer.invoke(IPC.apiKeyTest, provider)
   },
   backup: {
     export: () => ipcRenderer.invoke(IPC.backupExport)

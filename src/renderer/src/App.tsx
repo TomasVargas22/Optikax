@@ -16,6 +16,7 @@ export function App() {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [hasKey, setHasKey] = useState<boolean | null>(null)
+  const [keyTick, setKeyTick] = useState(0)
   const [windowState, setWindowState] = useState<WindowState>('visible')
   const [mem, setMem] = useState<MemStats | null>(null)
   const [game, setGame] = useState<GameModeStatus | null>(null)
@@ -43,7 +44,6 @@ export function App() {
     runScan(false)
     void window.optikax.app.info().then(setInfo)
     void window.optikax.settings.get().then(setSettings)
-    void window.optikax.apiKey.has().then(setHasKey)
     void window.optikax.gameMode.status().then(setGame)
     const offGame = window.optikax.gameMode.onChange(setGame)
     const offWindow = window.optikax.app.onWindowState(setWindowState)
@@ -56,6 +56,12 @@ export function App() {
       offWindow()
     }
   }, [runScan])
+
+  // ¿Hay clave para el proveedor de IA elegido? Se vuelve a mirar al cambiar de proveedor o de clave.
+  const provider = settings?.ia.proveedor ?? 'anthropic'
+  useEffect(() => {
+    void window.optikax.apiKey.has(provider).then(setHasKey)
+  }, [provider, keyTick])
 
   // Con un juego abierto la app se queda quieta: sin animaciones, 3D ni sondeos de la interfaz.
   const playing = game?.juego != null
@@ -146,13 +152,13 @@ export function App() {
           )}
 
           {page.id === 'optimizar' && <Optimizar />}
-          {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} />}
+          {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} hasKey={hasKey} provider={provider} />}
           {page.id === 'juego' && <ModoJuego status={game} settings={settings} />}
           {page.id === 'ajustes' && (
             <Ajustes
               settings={settings}
               onSettings={setSettings}
-              onKeyChange={setHasKey}
+              onKeyChange={() => setKeyTick((n) => n + 1)}
               onOpenGameMode={() => setPageId('juego')}
               onOpenMemory={() => setPageId('memoria')}
             />
