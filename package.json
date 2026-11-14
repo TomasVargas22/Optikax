@@ -2,7 +2,7 @@
   "name": "optikax",
   "productName": "Optikax",
   "version": "0.1.0",
-  "description": "Optimizador de PC enfocado 100% en gaming, con análisis por IA de tu hardware.",
+  "description": "Optimizador de PC enfocado 100% en gaming, con anÃ¡lisis por IA de tu hardware.",
   "main": "./out/main/index.js",
   "private": true,
   "scripts": {
@@ -10,6 +10,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "verify:tweaks": "electron-vite build && set OPTIKAX_VERIFY=1&& electron .",
     "dist": "electron-vite build && electron-builder --win"
   },
   "build": {
@@ -19,7 +20,8 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "!out/main/verify-*.js"
     ],
     "extraResources": [
       {

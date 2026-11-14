@@ -59,7 +59,24 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-if (!app.requestSingleInstanceLock()) {
+// Verificación de los ajustes (npm run verify:tweaks): solo en desarrollo, sin ventana
+// y con un backup.json temporal para no tocar el del usuario.
+const verifyMode = !app.isPackaged && process.env['OPTIKAX_VERIFY'] === '1'
+
+if (verifyMode) {
+  app.setPath('userData', join(app.getPath('temp'), 'optikax-verify'))
+  void app.whenReady().then(async () => {
+    let code = 1
+    try {
+      const { runVerification } = await import('./verify')
+      code = await runVerification()
+    } catch (err) {
+      console.error('[verify]', err)
+    }
+    worker.stop()
+    app.exit(code)
+  })
+} else if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => {
