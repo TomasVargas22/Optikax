@@ -251,6 +251,60 @@ export function recommendedTweaks(tweaks: TweakInfo[], ia: TweakRecommendation[]
     .map((t) => t.id)
 }
 
+// ---------- Análisis con IA ----------
+
+export const AI_PROFILES = ['entrada', 'media', 'alta', 'entusiasta'] as const
+export type AiProfile = (typeof AI_PROFILES)[number]
+
+export const MANUAL_CATEGORIES = ['bios', 'drivers', 'panel_gpu', 'juego', 'hardware', 'windows'] as const
+export type ManualCategory = (typeof MANUAL_CATEGORIES)[number]
+
+export interface AiManual {
+  titulo: string
+  detalle: string
+  categoria: ManualCategory
+  impacto: 'alto' | 'medio' | 'bajo'
+}
+
+/** Lo que devuelve el paso de estructuración; los IDs ya vienen filtrados contra el catálogo. */
+export interface AiRecommendation {
+  resumen: string
+  perfil: AiProfile
+  ajustes: TweakRecommendation[]
+  manuales: AiManual[]
+  ram: { autoLimpieza: boolean; umbralStandbyMB: number; umbralLibreMB: number }
+  advertencias: string[]
+}
+
+export interface AiSource {
+  url: string
+  title: string
+}
+
+export interface AiAnalysis {
+  createdAt: string
+  /** Modelo que respondió (puede ser el de respaldo si el principal declinó). */
+  model: string
+  recomendacion: AiRecommendation
+  /** Sacadas de los resultados de búsqueda, no del texto del modelo. */
+  fuentes: AiSource[]
+  busquedas: string[]
+  /** Estimación con los precios de Claude Opus 5.5. */
+  costoUSD: number
+  /** IDs que el modelo propuso y no están en el catálogo (se descartaron). */
+  descartados: string[]
+}
+
+export type AiProgress =
+  | { kind: 'fase'; fase: 'investigando' | 'estructurando'; text: string }
+  | { kind: 'busqueda'; query: string }
+  | { kind: 'fuente'; source: AiSource }
+
+export interface AiKeyTest {
+  ok: boolean
+  error: string | null
+}
+
 export interface RestorePointInfo {
   /** omitido: ya se creó uno desde Optikax en las últimas 24 h. */
   status: 'creado' | 'reciente' | 'no_disponible' | 'omitido'
@@ -297,6 +351,15 @@ export interface OptikaxApi {
     has(): Promise<boolean>
     set(key: string): Promise<void>
     clear(): Promise<void>
+    /** Comprueba la clave guardada contra la API (sin coste: no genera tokens). */
+    test(): Promise<AiKeyTest>
+  }
+  ai: {
+    /** Último análisis guardado en disco, o null. */
+    last(): Promise<AiAnalysis | null>
+    analyze(): Promise<AiAnalysis>
+    cancel(): Promise<void>
+    onProgress(cb: (p: AiProgress) => void): () => void
   }
 }
 
@@ -322,5 +385,10 @@ export const IPC = {
   memoryEvent: 'memory:event',
   apiKeyHas: 'apikey:has',
   apiKeySet: 'apikey:set',
-  apiKeyClear: 'apikey:clear'
+  apiKeyClear: 'apikey:clear',
+  apiKeyTest: 'apikey:test',
+  aiLast: 'ai:last',
+  aiAnalyze: 'ai:analyze',
+  aiCancel: 'ai:cancel',
+  aiProgress: 'ai:progress'
 } as const

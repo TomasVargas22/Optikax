@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { AppInfo, MemStats, Settings, WindowState } from '@shared/types'
 
 const gb = (bytes: number): string => (bytes / 2 ** 30).toFixed(1)
+import { Ajustes } from './Ajustes'
+import { Analisis } from './Analisis'
 import { errorMessage } from './errors'
 import { HardwareSummary } from './HardwareSummary'
 import { Memoria } from './Memoria'
@@ -94,6 +96,8 @@ export function App() {
 
         {page.id === 'panel' && <HardwareSummary />}
         {page.id === 'optimizar' && <Optimizar />}
+        {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} />}
+        {page.id === 'ajustes' && <Ajustes onKeyChange={setHasKey} />}
 
         {page.id === 'panel' && (
           <div className="status">

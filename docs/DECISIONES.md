@@ -4,6 +4,40 @@ Registro de decisiones tomadas durante el desarrollo y de lo que se descubrió a
 
 ---
 
+## 2026-11-14 · Fase D: análisis con IA
+
+### API validada (skill `claude-api`, SDK `@anthropic-ai/sdk` 1.8.0 instalado)
+Todo lo que pide la sección 4.4 del prompt existe tal cual, sin cambios de nombre:
+- modelo `claude-opus-5-5`;
+- `thinking: { type: 'adaptive' }`. En Opus 5.5 no se puede desactivar y su esfuerzo por defecto es `medium`, así que se fija `effort: 'high'` en la investigación y `low` en la estructuración;
+- `betas: ['server-side-fallback-2026-07-01']` con `fallbacks: 'default'`: si el modelo declina por política, la API reintenta en otro modelo dentro de la misma llamada;
+- herramienta `web_search_20260209` (`max_uses: 12`), y `pause_turn` resuelto reenviando el turno, como máximo 5 veces;
+- `client.beta.messages.parse` con `betaZodOutputFormat` (el helper importa `zod/v4`, compatible con zod 4).
+
+**Ajuste respecto al prompt:** el paso 2 usa `beta.messages.parse` + `betaZodOutputFormat` en lugar de `messages.parse` + `zodOutputFormat`, para poder enviar también `fallbacks`, que solo existe en la API beta.
+
+### Diseño
+- `src/main/ai.ts`: la clave se lee de `store.ts` solo en el proceso principal y nunca se registra. Los errores de la API se traducen a mensajes en español, sin la clave.
+- `src/main/ai-schema.ts`: esquema y posprocesado puros. Descarta IDs fuera del catálogo antes de validar, quita duplicados y ajusta los umbrales de RAM a un rango de 256 MB a la mitad de la RAM.
+- Las fuentes salen de los bloques `web_search_tool_result`, no del texto del modelo.
+- El análisis se guarda en `userData/analysis.json`, con su fecha y su coste estimado con los precios de Opus 5.5.
+- "Probar conexión" usa `models.retrieve`: valida la clave sin generar tokens.
+- Optimizar muestra "Recomendado por la IA" con el motivo, y `recommendedTweaks` recibe las recomendaciones del último análisis.
+
+### Verificación
+- No hay API key en el equipo. `npm run verify:ai` prueba sin coste:
+  - el posprocesado del paso 2 con una salida simulada (`fixtures/`);
+  - "Aplicar recomendados" contra el catálogo real;
+  - que el esquema genera un `json_schema`;
+  - la estimación de coste;
+  - el mensaje sin clave y una clave inválida (`AuthenticationError`).
+- **Sin verificar:** las llamadas reales de investigación y estructuración (streaming, búsquedas, `pause_turn`, fallbacks). Hace falta una API key real.
+
+### Hallazgo: el escaneo de hardware puede pasar de 60 s
+Una vez `hardware.ps1` tardó 108 s, cuando lo normal son 6 s (WMI ocupado de forma puntual). Con el límite de 60 s de `runScript`, el escaneo falla. Conviene subirlo o reintentar; queda pendiente.
+
+---
+
 ## 2026-11-14 · Fase B: verificación de ajustes
 
 ### Cómo se verifica

@@ -8,6 +8,7 @@ import {
   type Settings,
   type TitleBarTheme
 } from '@shared/types'
+import { analyze, cancelAnalysis, lastAnalysis, testApiKey } from './ai'
 import { getHardware } from './hardware'
 import { memoryState, onMemoryEvent, purge, PURGE_KINDS, syncAutoClean } from './memory'
 import { native } from './native'
@@ -81,4 +82,14 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     setApiKey(key)
   })
   ipcMain.handle(IPC.apiKeyClear, () => clearApiKey())
+  ipcMain.handle(IPC.apiKeyTest, () => testApiKey())
+
+  ipcMain.handle(IPC.aiLast, () => lastAnalysis())
+  ipcMain.handle(IPC.aiAnalyze, () =>
+    analyze((p) => {
+      const win = getWindow()
+      if (win && !win.isDestroyed()) win.webContents.send(IPC.aiProgress, p)
+    })
+  )
+  ipcMain.handle(IPC.aiCancel, () => cancelAnalysis())
 }

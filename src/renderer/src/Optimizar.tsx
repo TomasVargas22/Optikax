@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { errorMessage } from './errors'
-import { recommendedTweaks, type RestorePointInfo, type TweakActionResult, type TweakCategory, type TweakId, type TweakInfo } from '@shared/types'
+import {
+  recommendedTweaks,
+  type RestorePointInfo,
+  type TweakActionResult,
+  type TweakCategory,
+  type TweakId,
+  type TweakInfo,
+  type TweakRecommendation
+} from '@shared/types'
 
 const CATEGORY_LABEL: Record<TweakCategory, string> = {
   energia: 'Energía',
@@ -52,9 +60,11 @@ export function Optimizar() {
   const [busy, setBusy] = useState<'aplicar' | 'revertir' | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ia, setIa] = useState<TweakRecommendation[] | null>(null)
 
   useEffect(() => {
     window.optikax.tweaks.list().then(setTweaks, (e: unknown) => setError(errorMessage(e)))
+    void window.optikax.ai.last().then((a) => setIa(a?.recomendacion.ajustes ?? null))
   }, [])
 
   const run = (action: 'aplicar' | 'revertir', ids?: TweakId[]): void => {
@@ -82,8 +92,9 @@ export function Optimizar() {
   if (error && !tweaks) return <p className="lede">No se pudieron leer los ajustes: {error}</p>
   if (!tweaks) return <p className="block eyebrow">Leyendo el estado de los ajustes…</p>
 
-  // Sin análisis de IA todavía: solo entran los de riesgo bajo (ver recommendedTweaks).
-  const recommended = recommendedTweaks(tweaks)
+  // Sin análisis de IA solo entran los de riesgo bajo; con él, lo que diga la IA (ver recommendedTweaks).
+  const recommended = recommendedTweaks(tweaks, ia)
+  const iaById = new Map((ia ?? []).map((r) => [r.id, r]))
   const revertibles = tweaks.filter((t) => t.revertible)
   const activos = tweaks.filter((t) => t.activo).length
 
@@ -181,6 +192,11 @@ export function Optimizar() {
               <h3>{t.titulo}</h3>
               <p>{t.descripcion}</p>
               {t.nota && <p className="tweak-note">{t.nota}</p>}
+              {iaById.get(t.id)?.aplicar && (
+                <p className="tweak-ia">
+                  <b>Recomendado por la IA</b> · {iaById.get(t.id)!.motivo}
+                </p>
+              )}
               <div className="tweak-foot">
                 {t.motivoNoAplica ? (
                   <span className="tweak-status">No aplica · {t.motivoNoAplica}</span>

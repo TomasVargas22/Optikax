@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
   IPC,
+  type AiProgress,
   type MemoryEvent,
   type OptikaxApi,
   type ScanProgress,
@@ -47,7 +48,18 @@ const api: OptikaxApi = {
   apiKey: {
     has: () => ipcRenderer.invoke(IPC.apiKeyHas),
     set: (key) => ipcRenderer.invoke(IPC.apiKeySet, key),
-    clear: () => ipcRenderer.invoke(IPC.apiKeyClear)
+    clear: () => ipcRenderer.invoke(IPC.apiKeyClear),
+    test: () => ipcRenderer.invoke(IPC.apiKeyTest)
+  },
+  ai: {
+    last: () => ipcRenderer.invoke(IPC.aiLast),
+    analyze: () => ipcRenderer.invoke(IPC.aiAnalyze),
+    cancel: () => ipcRenderer.invoke(IPC.aiCancel),
+    onProgress: (cb) => {
+      const listener = (_e: IpcRendererEvent, p: AiProgress): void => cb(p)
+      ipcRenderer.on(IPC.aiProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.aiProgress, listener)
+    }
   }
 }
 

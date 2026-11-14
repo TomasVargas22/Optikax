@@ -739,6 +739,47 @@ input {
   font-style: italic;
   color: var(--text);
 }
+.tweak p.tweak-ia {
+  font-size: 13px;
+  color: var(--text);
+}
+.tweak p.tweak-ia b {
+  display: inline-block;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--lime);
+  color: var(--lime-ink);
+  font-weight: 600;
+}
+.sources {
+  display: grid;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  list-style: none;
+  padding: 0;
+  font-size: 14px;
+}
+.sources a {
+  color: var(--text);
+  text-underline-offset: 3px;
+}
+.key-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+.key-form input {
+  flex: 1 1 320px;
+  min-height: 40px;
+  padding: 0 var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
 .tweak-foot {
   margin-top: auto;
   padding-top: var(--s-3);
