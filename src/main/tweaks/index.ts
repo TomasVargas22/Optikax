@@ -29,6 +29,7 @@ async function describe(ctx: TweakContext): Promise<TweakInfo[]> {
       descripcion: t.descripcion,
       categoria: t.categoria,
       riesgo: t.riesgo,
+      nota: t.nota ?? null,
       reinicio: t.reinicio,
       motivoNoAplica: t.motivoNoAplica(ctx),
       activo: t.activo(ctx, reg, entry?.data),

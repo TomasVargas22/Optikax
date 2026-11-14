@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { errorMessage } from './errors'
-import type { RestorePointInfo, TweakActionResult, TweakCategory, TweakId, TweakInfo } from '@shared/types'
+import { recommendedTweaks, type RestorePointInfo, type TweakActionResult, type TweakCategory, type TweakId, type TweakInfo } from '@shared/types'
 
 const CATEGORY_LABEL: Record<TweakCategory, string> = {
   energia: 'Energía',
@@ -82,8 +82,8 @@ export function Optimizar() {
   if (error && !tweaks) return <p className="lede">No se pudieron leer los ajustes: {error}</p>
   if (!tweaks) return <p className="block eyebrow">Leyendo el estado de los ajustes…</p>
 
-  const selectable = tweaks.filter((t) => !t.activo && t.motivoNoAplica === null)
-  const lowRisk = selectable.filter((t) => t.riesgo === 'bajo')
+  // Sin análisis de IA todavía: solo entran los de riesgo bajo (ver recommendedTweaks).
+  const recommended = recommendedTweaks(tweaks)
   const revertibles = tweaks.filter((t) => t.revertible)
   const activos = tweaks.filter((t) => t.activo).length
 
@@ -95,9 +95,15 @@ export function Optimizar() {
             <span className="num">{activos}</span> de <span className="num">{tweaks.length}</span> activos
           </p>
           <div className="toolbar">
-            {lowRisk.length > 0 && (
-              <button type="button" className="pill" disabled={busy !== null} onClick={() => setSelected(new Set(lowRisk.map((t) => t.id)))}>
-                Seleccionar los de riesgo bajo
+            {recommended.length > 0 && (
+              <button
+                type="button"
+                className="pill"
+                disabled={busy !== null}
+                title="Los de riesgo medio solo entran si el análisis de IA los recomienda para tu equipo."
+                onClick={() => setSelected(new Set(recommended))}
+              >
+                Seleccionar recomendados
               </button>
             )}
             {revertibles.length > 0 && (
@@ -156,7 +162,7 @@ export function Optimizar() {
               <div className="tweak-top">
                 <span className="tweak-tags">
                   <span>{CATEGORY_LABEL[t.categoria]}</span>
-                  {t.riesgo === 'medio' && <span data-tag="riesgo">Efecto discutido</span>}
+                  {t.riesgo === 'medio' && <span data-tag="riesgo">Riesgo medio</span>}
                   {restart && <span>{restart}</span>}
                 </span>
                 {isSelectable && (
@@ -174,6 +180,7 @@ export function Optimizar() {
               </div>
               <h3>{t.titulo}</h3>
               <p>{t.descripcion}</p>
+              {t.nota && <p className="tweak-note">{t.nota}</p>}
               <div className="tweak-foot">
                 {t.motivoNoAplica ? (
                   <span className="tweak-status">No aplica · {t.motivoNoAplica}</span>

@@ -31,6 +31,8 @@ export interface Tweak {
   descripcion: string
   categoria: TweakCategory
   riesgo: 'bajo' | 'medio'
+  /** Aviso corto para la tarjeta; obligatorio en los de riesgo medio. */
+  nota?: string
   reinicio: TweakRestart
   /** Motivo por el que no aplica a este equipo, o null si aplica. */
   motivoNoAplica(ctx: TweakContext): string | null
@@ -43,7 +45,7 @@ export interface Tweak {
   revertir(respaldo: unknown): Promise<void>
 }
 
-type Meta = Pick<Tweak, 'id' | 'titulo' | 'descripcion' | 'categoria' | 'riesgo' | 'reinicio'> & {
+type Meta = Pick<Tweak, 'id' | 'titulo' | 'descripcion' | 'categoria' | 'riesgo' | 'nota' | 'reinicio'> & {
   motivoNoAplica?: Tweak['motivoNoAplica']
 }
 
@@ -244,6 +246,7 @@ const memoryCompressionOff: Tweak = {
   descripcion: 'Con RAM de sobra, ahorra el trabajo de CPU que Windows dedica a comprimir memoria.',
   categoria: 'memoria',
   riesgo: 'medio',
+  nota: 'Riesgo medio: si la RAM se queda corta, Windows tira más del disco y el juego puede dar tirones.',
   reinicio: 'reinicio',
   motivoNoAplica(ctx) {
     const total = ctx.hw.derived.ram?.totalBytes ?? 0
@@ -409,6 +412,7 @@ export const CATALOG: Tweak[] = [
       descripcion: 'Windows limita los paquetes de red cuando hay audio o video sonando. Su efecto en juegos se discute.',
       categoria: 'red',
       riesgo: 'medio',
+      nota: 'Efecto discutido; solo ayuda en algunos juegos.',
       reinicio: 'reinicio'
     },
     [dword(SYSTEM_PROFILE, 'NetworkThrottlingIndex', 0xffffffff, 10)]
@@ -421,6 +425,7 @@ export const CATALOG: Tweak[] = [
       descripcion: 'Envía los paquetes pequeños sin esperar a agruparlos. Solo ayuda en algunos juegos que usan TCP.',
       categoria: 'red',
       riesgo: 'medio',
+      nota: 'Efecto discutido; solo ayuda en algunos juegos.',
       reinicio: 'reinicio',
       motivoNoAplica: (ctx) => (ctx.env.nic ? null : 'No se encontró una tarjeta de red con conexión a internet.')
     },

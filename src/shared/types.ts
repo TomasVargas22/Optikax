@@ -215,6 +215,8 @@ export interface TweakInfo {
   descripcion: string
   categoria: TweakCategory
   riesgo: 'bajo' | 'medio'
+  /** Aviso corto que se muestra en la tarjeta (p. ej. por qué es de riesgo medio). */
+  nota: string | null
   reinicio: TweakRestart
   /** null si el ajuste aplica a este equipo; si no, el motivo. */
   motivoNoAplica: string | null
@@ -222,6 +224,31 @@ export interface TweakInfo {
   /** true si Optikax lo aplicó y guarda el valor original para revertirlo. */
   revertible: boolean
   aplicadoEn: string | null
+}
+
+/** Recomendación de la IA para un ajuste (fase de análisis). */
+export interface TweakRecommendation {
+  id: TweakId
+  aplicar: boolean
+  motivo: string
+}
+
+/**
+ * Ajustes que entran en "Aplicar recomendados", en orden del catálogo.
+ * - Solo los que aplican a este equipo y aún no están activos.
+ * - Riesgo bajo: siempre, salvo que la IA diga explícitamente que no.
+ * - Riesgo medio: solo si la IA lo recomienda con un motivo concreto.
+ */
+export function recommendedTweaks(tweaks: TweakInfo[], ia: TweakRecommendation[] | null = null): TweakId[] {
+  const byId = new Map((ia ?? []).map((r) => [r.id, r]))
+  return tweaks
+    .filter((t) => !t.activo && t.motivoNoAplica === null)
+    .filter((t) => {
+      const rec = byId.get(t.id)
+      if (t.riesgo === 'bajo') return rec?.aplicar !== false
+      return rec?.aplicar === true && rec.motivo.trim().length > 0
+    })
+    .map((t) => t.id)
 }
 
 export interface RestorePointInfo {

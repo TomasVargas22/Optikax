@@ -734,6 +734,11 @@ input {
   font-size: 14px;
   color: var(--text-2);
 }
+.tweak p.tweak-note {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text);
+}
 .tweak-foot {
   margin-top: auto;
   padding-top: var(--s-3);
