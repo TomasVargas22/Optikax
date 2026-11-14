@@ -801,6 +801,13 @@ input {
   opacity: 0.5;
 }
 
+/* Con un juego abierto o la ventana oculta, nada se mueve: cero trabajo de GPU para la interfaz. */
+.shell[data-game] *,
+.shell[data-window='oculta'] * {
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

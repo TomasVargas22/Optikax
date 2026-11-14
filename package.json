@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "verify:tweaks": "electron-vite build && set OPTIKAX_VERIFY=1&& electron .",
     "verify:ai": "electron-vite build && set OPTIKAX_VERIFY=ai&& electron .",
+    "verify:game": "electron-vite build && set OPTIKAX_VERIFY=game&& electron .",
     "dist": "electron-vite build && electron-builder --win"
   },
   "build": {
@@ -28,10 +29,15 @@
       {
         "from": "resources/scripts",
         "to": "scripts"
+      },
+      {
+        "from": "resources/tray.png",
+        "to": "tray.png"
       }
     ],
     "win": {
       "target": "nsis",
+      "icon": "resources/icon.png",
       "requestedExecutionLevel": "requireAdministrator"
     },
     "nsis": {

@@ -10,7 +10,8 @@ const STEP_LABEL: Record<string, string> = {
   discos: 'discos',
   pantallas: 'pantallas',
   sistema: 'sistema',
-  listo: 'listo'
+  listo: 'listo',
+  reintentando: 'de nuevo (Windows tardó en responder)'
 }
 
 const gb = (bytes: number): number => Math.round(bytes / 2 ** 30)

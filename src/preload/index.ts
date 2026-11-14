@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
   IPC,
   type AiProgress,
+  type GameModeStatus,
   type MemoryEvent,
   type OptikaxApi,
   type ScanProgress,
@@ -50,6 +51,14 @@ const api: OptikaxApi = {
     set: (key) => ipcRenderer.invoke(IPC.apiKeySet, key),
     clear: () => ipcRenderer.invoke(IPC.apiKeyClear),
     test: () => ipcRenderer.invoke(IPC.apiKeyTest)
+  },
+  gameMode: {
+    status: () => ipcRenderer.invoke(IPC.gameModeStatus),
+    onChange: (cb) => {
+      const listener = (_e: IpcRendererEvent, s: GameModeStatus): void => cb(s)
+      ipcRenderer.on(IPC.gameModeChange, listener)
+      return () => ipcRenderer.removeListener(IPC.gameModeChange, listener)
+    }
   },
   ai: {
     last: () => ipcRenderer.invoke(IPC.aiLast),

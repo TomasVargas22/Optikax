@@ -1,11 +1,22 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import { IPC, type WindowState } from '@shared/types'
+import { hasActiveGame, shutdownGameMode, startGameMode } from './gamemode'
 import { stopAutoClean } from './memory'
 import { worker } from './ps'
 import { registerIpc, TITLEBAR, TITLEBAR_HEIGHT } from './ipc'
+import { createTray, destroyTray, updateTray } from './tray'
 
 let mainWindow: BrowserWindow | null = null
+/** true solo al salir desde la bandeja o el sistema: cerrar la ventana la oculta. */
+let quitting = false
+
+function showWindow(): void {
+  if (!mainWindow) return createWindow()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
 
 function windowState(win: BrowserWindow): WindowState {
   if (win.isMinimized() || !win.isVisible()) return 'oculta'
@@ -20,6 +31,7 @@ function createWindow(): void {
     minHeight: 760,
     show: false,
     backgroundColor: '#010101',
+    icon: app.isPackaged ? undefined : join(app.getAppPath(), 'resources', 'icon.png'),
     titleBarStyle: 'hidden',
     titleBarOverlay: { ...TITLEBAR.oscuro, height: TITLEBAR_HEIGHT },
     webPreferences: {
@@ -50,6 +62,13 @@ function createWindow(): void {
     if (url !== win.webContents.getURL()) e.preventDefault()
   })
 
+  // Cerrar la ventana la manda a la bandeja: el Modo Juego sigue funcionando.
+  win.on('close', (e) => {
+    if (quitting) return
+    e.preventDefault()
+    win.hide()
+  })
+
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
@@ -63,12 +82,15 @@ function createWindow(): void {
 // y con un backup.json temporal para no tocar el del usuario.
 const verifyMode = app.isPackaged ? null : (process.env['OPTIKAX_VERIFY'] ?? null)
 
-if (verifyMode === '1' || verifyMode === 'ai') {
+if (verifyMode === '1' || verifyMode === 'ai' || verifyMode === 'game') {
   app.setPath('userData', join(app.getPath('temp'), 'optikax-verify'))
   void app.whenReady().then(async () => {
     let code = 1
     try {
-      if (verifyMode === 'ai') {
+      if (verifyMode === 'game') {
+        const { runGameVerification } = await import('./verify-game')
+        code = await runGameVerification()
+      } else if (verifyMode === 'ai') {
         const { runAiVerification } = await import('./verify-ai')
         code = await runAiVerification()
       } else {
@@ -84,25 +106,34 @@ if (verifyMode === '1' || verifyMode === 'ai') {
 } else if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
-  })
+  app.on('second-instance', showWindow)
 
   void app.whenReady().then(() => {
     app.setAppUserModelId('com.optikax.app')
     registerIpc(() => mainWindow)
     createWindow()
+    createTray(showWindow)
+    void startGameMode((status) => {
+      updateTray(status)
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.gameModeChange, status)
+    })
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
   })
 
-  app.on('window-all-closed', () => app.quit())
+  // Con un juego abierto, se restaura el plan de energía antes de salir.
+  app.on('before-quit', (e) => {
+    quitting = true
+    if (!hasActiveGame()) return
+    e.preventDefault()
+    void shutdownGameMode().finally(() => app.quit())
+  })
+  // La ventana se oculta en vez de cerrarse; la app solo termina desde la bandeja.
+  app.on('window-all-closed', () => {})
   app.on('will-quit', () => {
     stopAutoClean()
+    destroyTray()
     worker.stop()
   })
 }

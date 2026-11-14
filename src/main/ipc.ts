@@ -9,6 +9,7 @@ import {
   type TitleBarTheme
 } from '@shared/types'
 import { analyze, cancelAnalysis, lastAnalysis, testApiKey } from './ai'
+import { gameModeStatus, syncGameMode } from './gamemode'
 import { getHardware } from './hardware'
 import { memoryState, onMemoryEvent, purge, PURGE_KINDS, syncAutoClean } from './memory'
 import { native } from './native'
@@ -47,8 +48,11 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.settingsUpdate, (_e, patch: DeepPartial<Settings>) => {
     const next = updateSettings(patch)
     syncAutoClean()
+    syncGameMode()
     return next
   })
+
+  ipcMain.handle(IPC.gameModeStatus, () => gameModeStatus())
 
   ipcMain.handle(IPC.hardwareScan, (_e, force: unknown) =>
     getHardware(force === true, (p) => {

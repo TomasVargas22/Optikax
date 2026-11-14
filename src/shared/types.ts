@@ -251,6 +251,44 @@ export function recommendedTweaks(tweaks: TweakInfo[], ia: TweakRecommendation[]
     .map((t) => t.id)
 }
 
+// ---------- Modo Juego ----------
+
+export interface GameInfo {
+  pid: number
+  name: string
+  path: string | null
+  /** Por qué se considera un juego (carpeta de la tienda, lista conocida o agregado a mano). */
+  motivo: string
+}
+
+export interface ActiveGame extends GameInfo {
+  startedAt: string
+  /** Lo que hizo Optikax al detectarlo, en texto para la interfaz. */
+  acciones: string[]
+}
+
+export interface GameSession {
+  game: string
+  startedAt: string
+  endedAt: string
+  durationSec: number
+  freedBytes: number
+  acciones: string[]
+}
+
+/** Otro programa en ejecución que también toca prioridades, planes de energía o memoria. */
+export interface GameConflict {
+  name: string
+  motivo: string
+}
+
+export interface GameModeStatus {
+  activo: boolean
+  juego: ActiveGame | null
+  sesiones: GameSession[]
+  conflictos: GameConflict[]
+}
+
 // ---------- Análisis con IA ----------
 
 export const AI_PROFILES = ['entrada', 'media', 'alta', 'entusiasta'] as const
@@ -354,6 +392,11 @@ export interface OptikaxApi {
     /** Comprueba la clave guardada contra la API (sin coste: no genera tokens). */
     test(): Promise<AiKeyTest>
   }
+  gameMode: {
+    status(): Promise<GameModeStatus>
+    /** Llega al detectar un juego, al cerrarlo y al cambiar los ajustes del modo. */
+    onChange(cb: (s: GameModeStatus) => void): () => void
+  }
   ai: {
     /** Último análisis guardado en disco, o null. */
     last(): Promise<AiAnalysis | null>
@@ -390,5 +433,7 @@ export const IPC = {
   aiLast: 'ai:last',
   aiAnalyze: 'ai:analyze',
   aiCancel: 'ai:cancel',
-  aiProgress: 'ai:progress'
+  aiProgress: 'ai:progress',
+  gameModeStatus: 'gamemode:status',
+  gameModeChange: 'gamemode:change'
 } as const

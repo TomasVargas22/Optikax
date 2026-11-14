@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AppInfo, MemStats, Settings, WindowState } from '@shared/types'
+import type { AppInfo, GameModeStatus, MemStats, Settings, WindowState } from '@shared/types'
 
 const gb = (bytes: number): string => (bytes / 2 ** 30).toFixed(1)
 import { Ajustes } from './Ajustes'
@@ -7,6 +7,7 @@ import { Analisis } from './Analisis'
 import { errorMessage } from './errors'
 import { HardwareSummary } from './HardwareSummary'
 import { Memoria } from './Memoria'
+import { ModoJuego } from './ModoJuego'
 import { Optimizar } from './Optimizar'
 import { PAGES, type PageId } from './pages'
 
@@ -18,6 +19,7 @@ export function App() {
   const [windowState, setWindowState] = useState<WindowState>('visible')
   const [mem, setMem] = useState<MemStats | null>(null)
   const [memError, setMemError] = useState<string | null>(null)
+  const [game, setGame] = useState<GameModeStatus | null>(null)
 
   const page = PAGES.find((p) => p.id === pageId) ?? PAGES[0]
   const mainPages = PAGES.filter((p) => p.id !== 'ajustes')
@@ -26,11 +28,20 @@ export function App() {
     void window.optikax.app.info().then(setInfo)
     void window.optikax.settings.get().then(setSettings)
     void window.optikax.apiKey.has().then(setHasKey)
-    return window.optikax.app.onWindowState(setWindowState)
+    void window.optikax.gameMode.status().then(setGame)
+    const offGame = window.optikax.gameMode.onChange(setGame)
+    const offWindow = window.optikax.app.onWindowState(setWindowState)
+    return () => {
+      offGame()
+      offWindow()
+    }
   }, [])
 
+  // Con un juego abierto la app se queda quieta: sin animaciones ni sondeos de la interfaz.
+  const playing = game?.juego != null
+
   // Lectura de memoria en vivo; se detiene cuando la ventana no se ve.
-  const watchMemory = pageId === 'panel' && windowState !== 'oculta'
+  const watchMemory = pageId === 'panel' && windowState !== 'oculta' && !playing
   useEffect(() => {
     if (!watchMemory) return
     let alive = true
@@ -54,7 +65,7 @@ export function App() {
   }, [page.theme])
 
   return (
-    <div className="shell" data-theme={page.theme} data-window={windowState}>
+    <div className="shell" data-theme={page.theme} data-window={windowState} data-game={playing || undefined}>
       <header className="titlebar">
         <div className="brand">
           O<i>.</i>
@@ -98,6 +109,7 @@ export function App() {
         {page.id === 'optimizar' && <Optimizar />}
         {page.id === 'ia' && <Analisis onOpenSettings={() => setPageId('ajustes')} />}
         {page.id === 'ajustes' && <Ajustes onKeyChange={setHasKey} />}
+        {page.id === 'juego' && <ModoJuego status={game} />}
 
         {page.id === 'panel' && (
           <div className="status">

@@ -4,6 +4,39 @@ Registro de decisiones tomadas durante el desarrollo y de lo que se descubrió a
 
 ---
 
+## 2026-11-14 · Fase E: Modo Juego y bandeja
+
+### Diseño
+- `game-detect.ts` (puro):
+  - juego = carpeta de una tienda (Steam, Epic, Riot, Xbox, GOG, EA, Ubisoft), lista de juegos conocidos o agregado a mano;
+  - se excluyen launchers, crash handlers, anti-cheats, instaladores, `bootstrapper.exe` y apps de Steam que no son juegos (Wallpaper Engine, SteamVR, Steamworks Shared);
+  - con varios juegos abiertos gana el de primer plano.
+- `gamemode.ts`: sondeo cada 3 s. Al detectar un juego:
+  - prioridad Alta, nunca Realtime, y solo si estaba en Normal o por debajo;
+  - purga de la standby;
+  - plan Máximo rendimiento;
+  - limpieza agresiva (mitad del umbral de standby, cada 15 s) aunque la automática esté apagada;
+  - notificación silenciosa;
+  - la interfaz pausa animaciones y sondeos.
+- **El plan de energía solo se cambia si el activo es Equilibrado o Economizador.** Un plan propio (como el "Ultimate Performance" de KernelOS de este equipo) se respeta, porque no hay forma fiable de saber qué hace.
+- **Restauración:** el estado se guarda en `gamemode-pending.json` ANTES de cada cambio. Al cerrar el juego se vuelve al plan anterior, salvo que otro programa lo haya cambiado mientras tanto; en ese caso se deja y se anota en la sesión. Si la app se cierra de golpe, se restaura al volver a abrirla. Al salir con un juego abierto, se restaura antes de cerrar.
+- Avisa de optimizadores en conflicto (KRNLGame, Process Lasso, ISLC, Razer Cortex, Wise Game Booster, Game Fire, Hone), sin tocarlos.
+- Bandeja: cerrar la ventana la oculta y el Modo Juego sigue funcionando. El menú tiene Abrir, Modo Juego (casilla) y Salir.
+- Las operaciones de energía tienen ahora un límite de 30 s (antes 10): una llamada a `powercfg` llegó a tardar más de 10 s.
+- El escaneo de hardware tiene un límite de 120 s y un reintento: resuelve el hallazgo de la Fase D.
+
+### Verificación (`npm run verify:game`)
+- **24/24 OK:**
+  - detección con casos fijos y sin falsos positivos en los 147 procesos del equipo;
+  - de punta a punta con `ping.exe` copiado como `steamapps\common\Test\TestGame.exe`: prioridad Alta, plan Máximo rendimiento, purga de 1,1 GB, aviso al renderer, restauración del plan al cerrar, sesión registrada;
+  - recuperación tras un cierre inesperado.
+- La prueba pone "Equilibrado" para ejercitar el cambio de plan y al final deja el plan original.
+- **Incidente en la primera pasada:** Call of Duty MW II estaba abierto. El Modo Juego lo detectó de verdad, le subió la prioridad y cambió el plan mientras la prueba esperaba. El plan se restauró al final, y COD se cerró poco después, así que no quedó nada cambiado. Desde entonces la prueba de punta a punta se salta si hay un juego real abierto.
+- Comprobado en la app real: al cerrar la ventana, la app sigue en la bandeja.
+- **Sin verificar a la vista:** el menú de la bandeja, la notificación y la pantalla Modo Juego.
+
+---
+
 ## 2026-11-14 · Fase D: análisis con IA
 
 ### API validada (skill `claude-api`, SDK `@anthropic-ai/sdk` 1.8.0 instalado)

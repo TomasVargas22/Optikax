@@ -50,11 +50,15 @@ export interface PowerState {
   schemes: string[]
 }
 
+// powercfg a veces tarda más de 10 s (otro programa tocando planes a la vez); no debe impedir restaurar.
+const POWER_TIMEOUT_MS = 30_000
+
 export const power = {
-  state: () => worker.request<PowerState>('power', { op: 'state' }),
-  setActive: (guid: string) => worker.request<boolean>('power', { op: 'setActive', guid }),
-  duplicate: async (guid: string) => (await worker.request<{ guid: string }>('power', { op: 'duplicate', guid })).guid,
-  delete: (guid: string) => worker.request<boolean>('power', { op: 'delete', guid })
+  state: () => worker.request<PowerState>('power', { op: 'state' }, POWER_TIMEOUT_MS),
+  setActive: (guid: string) => worker.request<boolean>('power', { op: 'setActive', guid }, POWER_TIMEOUT_MS),
+  duplicate: async (guid: string) =>
+    (await worker.request<{ guid: string }>('power', { op: 'duplicate', guid }, POWER_TIMEOUT_MS)).guid,
+  delete: (guid: string) => worker.request<boolean>('power', { op: 'delete', guid }, POWER_TIMEOUT_MS)
 }
 
 /** Aplica en vivo la aceleración del mouse: [umbral1, umbral2, aceleración]. */

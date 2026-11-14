@@ -22,6 +22,14 @@ let timer: NodeJS.Timeout | null = null
 let lastAuto = 0
 let purging = false
 let totalBytes = 0
+/** Modo agresivo mientras hay un juego abierto: funciona aunque la limpieza automática esté apagada. */
+let gameBoost = false
+const GAME_GAP_MS = 15_000
+
+export function setGameBoost(on: boolean): void {
+  gameBoost = on
+  syncAutoClean()
+}
 
 export function onMemoryEvent(cb: (e: MemoryEvent) => void): void {
   listeners.add(cb)
@@ -95,14 +103,16 @@ export async function memoryState(): Promise<MemoryState> {
 }
 
 async function autoCheck(): Promise<void> {
-  if (purging || Date.now() - lastAuto < MIN_GAP_MS) return
+  if (purging || Date.now() - lastAuto < (gameBoost ? GAME_GAP_MS : MIN_GAP_MS)) return
   try {
     const m = await native.memStats()
     totalBytes = m.totalBytes
     const t = thresholds()
-    if (m.standbyBytes >= t.standbyMB * MB && m.freeBytes < t.libreMB * MB) {
+    // En juego se purga antes: con la mitad de standby ya basta.
+    const standbyMB = gameBoost ? t.standbyMB / 2 : t.standbyMB
+    if (m.standbyBytes >= standbyMB * MB && m.freeBytes < t.libreMB * MB) {
       lastAuto = Date.now()
-      await purge('standby', 'auto')
+      await purge('standby', gameBoost ? 'juego' : 'auto')
     }
   } catch {
     // Un fallo puntual (worker reiniciándose) no debe tumbar el temporizador.
@@ -111,7 +121,7 @@ async function autoCheck(): Promise<void> {
 
 /** Arranca o detiene la limpieza automática según los ajustes. Llamar al iniciar y tras cada cambio. */
 export function syncAutoClean(): void {
-  const enabled = getSettings().ram.autoLimpieza
+  const enabled = getSettings().ram.autoLimpieza || gameBoost
   if (enabled && !timer) {
     timer = setInterval(() => void autoCheck(), CHECK_MS)
     void autoCheck()
